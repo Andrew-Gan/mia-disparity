@@ -73,6 +73,21 @@ def get_num_classes(dataset: torch.utils.data.TensorDataset) -> int:
     return len(unique_classes)
 
 
+def _accumulate(iterable, fn=lambda x, y: x + y):
+    "Return running totals"
+    # _accumulate([1,2,3,4,5]) --> 1 3 6 10 15
+    # _accumulate([1,2,3,4,5], operator.mul) --> 1 2 6 24 120
+    it = iter(iterable)
+    try:
+        total = next(it)
+    except StopIteration:
+        return
+    yield total
+    for element in it:
+        total = fn(total, element)
+        yield total
+
+
 def dataset_split(dataset, lengths: list, shuffle_seed=1):
     """
     Split the dataset into subsets.
@@ -87,7 +102,7 @@ def dataset_split(dataset, lengths: list, shuffle_seed=1):
     indices = list(range(sum(lengths)))
     np.random.shuffle(indices)
     return [torch.utils.data.Subset(dataset, indices[offset - length:offset]) for offset, length in
-            zip(torch._utils._accumulate(lengths), lengths)]
+            zip(_accumulate(lengths), lengths)]
 
 
 def add_canaries(dataset, num_canaries, num_classes, shuffle_seed=1):

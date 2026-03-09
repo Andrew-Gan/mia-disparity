@@ -23,7 +23,7 @@ import sys
 sys.path.append(os.path.join(os.getcwd(), "..", ".."))
 
 from miae.utils.set_seed import set_seed
-from miae.attacks import losstraj_mia, shokri_mia, lira_mia, yeom_mia, aug_mia, calibration_mia, reference_mia
+from miae.attacks import lira_mia #losstraj_mia, shokri_mia, lira_mia, yeom_mia, aug_mia, calibration_mia, reference_mia
 from miae.attacks import base as mia_base
 from miae.utils import roc_auc, dataset_utils
 from experiment import models
@@ -31,9 +31,8 @@ from experiment.mia_comp import datasets
 from datasets import CINIC10
 from scipy.sparse import csr_matrix
 
-# adding mia that's not in MIAE package
+# adding mia that"s not in MIAE package
 from experiment.mia_comp.same_attack_different_signal import top_k_shokri_mia
-
 
 def get_dataset(dataset_name, aug, targetset_ratio, train_test_ratio, data_dir, shuffle_seed=1) -> tuple:
     """
@@ -49,6 +48,10 @@ def get_dataset(dataset_name, aug, targetset_ratio, train_test_ratio, data_dir, 
         dataset = datasets.get_cifar10(aug)
         num_classes = 10
         input_size = 32
+    elif dataset_name == 'cifar10_enlarged':
+        dataset = datasets.get_cifar10_enlarged(aug)
+        num_classes = 10
+        input_size = 256
     elif dataset_name == "cifar100":
         dataset = datasets.get_cifar100(aug)
         num_classes = 100
@@ -123,21 +126,20 @@ def train_target_model(model, target_model_dir: str, device: torch.device, train
     target_train_epochs = arg.target_epochs
     lr = arg.attack_lr
 
-    target_logger = logging.getLogger('target_logger')
+    target_logger = logging.getLogger("target_logger")
     target_logger.setLevel(logging.INFO)
     fh = logging.FileHandler(os.path.join(target_model_dir, f"target_model_{arg.target_model}_{arg.dataset}.log"))
-    fh.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
+    fh.setFormatter(logging.Formatter("%(asctime)s - %(message)s"))
     target_logger.addHandler(fh)
 
     # log the target dataset size
     target_logger.info(f"Target dataset size: {len(trainset)}")
 
     target_model = model.to(device)
-    trainloader = DataLoader(trainset, batch_size=batch_size, shuffle=True, num_workers=2)
-    testloader = DataLoader(testset, batch_size=batch_size, shuffle=False, num_workers=2)
+    trainloader = DataLoader(trainset, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True)
+    testloader = DataLoader(testset, batch_size=batch_size, shuffle=False, num_workers=8, pin_memory=True)
     criterion = torch.nn.CrossEntropyLoss()
-    optimizer = torch.optim.SGD(filter(lambda p: p.requires_grad, target_model.parameters()), lr=lr, momentum=0.9,
-                                weight_decay=0.0001)
+    optimizer = torch.optim.AdamW(filter(lambda p: p.requires_grad, target_model.parameters()), lr=lr)
 
     # Create a learning rate scheduler
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, target_train_epochs)
@@ -220,28 +222,28 @@ def get_aux_info(args, device: str, num_classes: int) -> mia_base.AuxiliaryInfo:
     """
     if args.attack == "losstraj":
         return losstraj_mia.LosstrajAuxiliaryInfo(
-            {'device': device, 'seed': args.seed, 'save_path': args.preparation_path, 'num_classes': num_classes,
-             'batch_size': args.batch_size, 'lr': 0.1, 'distillation_epochs': args.attack_epochs,
-             'log_path': args.result_path})
+            {"device": device, "seed": args.seed, "save_path": args.preparation_path, "num_classes": num_classes,
+             "batch_size": args.batch_size, "lr": args.attack_lr, "distillation_epochs": args.attack_epochs,
+             "log_path": args.result_path})
     if args.attack == "yeom":
         return yeom_mia.YeomAuxiliaryInfo(
-            {'device': device, 'shadow_seed_base': args.seed, 'save_path': args.preparation_path, 'num_classes': num_classes,
-             'batch_size': args.batch_size, 'lr': 0.1, 'epochs': args.attack_epochs, 'log_path': args.result_path})
+            {"device": device, "shadow_seed_base": args.seed, "save_path": args.preparation_path, "num_classes": num_classes,
+             "batch_size": args.batch_size, "lr": args.attack_lr, "epochs": args.attack_epochs, "log_path": args.result_path})
     if args.attack == "calibration":
         return calibration_mia.CalibrationAuxiliaryInfo(
-            {'device': device, 'seed': args.seed, 'save_path': args.preparation_path, 'num_classes': num_classes,
-             'batch_size': args.batch_size, 'lr': 0.1, 'epochs': args.attack_epochs, 'log_path': args.result_path, 
-             'num_shadow_models': 1})
+            {"device": device, "seed": args.seed, "save_path": args.preparation_path, "num_classes": num_classes,
+             "batch_size": args.batch_size, "lr": args.attack_lr, "epochs": args.attack_epochs, "log_path": args.result_path, 
+             "num_shadow_models": 1})
     if args.attack == "shokri":
         return shokri_mia.ShokriAuxiliaryInfo(
-            {'device': device, 'seed': args.seed, 'save_path': args.preparation_path, 'num_classes': num_classes,
-             'batch_size': args.batch_size, 'lr': 0.1, 'epochs': args.attack_epochs, 'log_path': args.result_path, 'num_shadow_models': 10, 
+            {"device": device, "seed": args.seed, "save_path": args.preparation_path, "num_classes": num_classes,
+             "batch_size": args.batch_size, "lr": args.attack_lr, "epochs": args.attack_epochs, "log_path": args.result_path, "num_shadow_models": 10, 
              "shadow_diff_init" : True})
     if args.attack == "top_k_shokri":
         return top_k_shokri_mia.TopKShokriAuxiliaryInfo(
-            {'device': device, 'seed': args.seed, 'save_path': args.preparation_path, 'num_classes': num_classes,
-             'batch_size': args.batch_size, 'lr': 0.1, 'epochs': args.attack_epochs, 'log_path': args.result_path,
-             'top_k': 10})
+            {"device": device, "seed": args.seed, "save_path": args.preparation_path, "num_classes": num_classes,
+             "batch_size": args.batch_size, "lr": args.attack_lr, "epochs": args.attack_epochs, "log_path": args.result_path,
+             "top_k": 10})
     if args.attack == "lira" or args.attack == "lira_offline":
         if args.dataset == "purchase100" or args.dataset == "texas100":
             n_augmentation = 1
@@ -249,27 +251,27 @@ def get_aux_info(args, device: str, num_classes: int) -> mia_base.AuxiliaryInfo:
             n_augmentation = 18
         if args.attack == "lira":
             return lira_mia.LiraAuxiliaryInfo(
-                {'device': device, 'seed': args.seed, 'save_path': args.preparation_path, 'num_classes': num_classes,
-                'batch_size': args.batch_size, 'lr': 0.1, "num_shadow_models": 20, 'epochs': args.attack_epochs, 'log_path': args.result_path,
-                'shadow_path': args.lira_shadow_path, 'shadow_diff_init': True, "augmentation_query": n_augmentation, "online": True})
+                {"device": device, "seed": args.seed, "save_path": args.preparation_path, "num_classes": num_classes,
+                "batch_size": args.batch_size, "lr": args.attack_lr, "num_shadow_models": 8, "epochs": args.attack_epochs, "log_path": args.result_path,
+                "shadow_path": args.lira_shadow_path, "shadow_diff_init": True, "augmentation_query": n_augmentation, "online": True})
         else:
             return lira_mia.LiraAuxiliaryInfo(
-                {'device': device, 'seed': args.seed, 'save_path': args.preparation_path, 'num_classes': num_classes,
-                'batch_size': args.batch_size, 'lr': 0.1, "num_shadow_models": 20, 'epochs': args.attack_epochs, 'log_path': args.result_path,
-                'shadow_path': args.lira_shadow_path, 'shadow_diff_init': True, "augmentation_query": n_augmentation, "online": False})
+                {"device": device, "seed": args.seed, "save_path": args.preparation_path, "num_classes": num_classes,
+                "batch_size": args.batch_size, "lr": args.attack_lr, "num_shadow_models": 20, "epochs": args.attack_epochs, "log_path": args.result_path,
+                "shadow_path": args.lira_shadow_path, "shadow_diff_init": True, "augmentation_query": n_augmentation, "online": False})
 
     if args.attack == "reference":
         return reference_mia.ReferenceAuxiliaryInfo(
-            {'device': device, 'seed': args.seed, 'save_path': args.preparation_path, 'num_classes': num_classes,
-            'batch_size': args.batch_size, 'lr': 0.1, "num_shadow_models": 20, 'epochs': args.attack_epochs, 'log_path': args.result_path,
-             'shadow_path': args.lira_shadow_path, 'shadow_diff_init': True})
+            {"device": device, "seed": args.seed, "save_path": args.preparation_path, "num_classes": num_classes,
+            "batch_size": args.batch_size, "lr": args.attack_lr, "num_shadow_models": 20, "epochs": args.attack_epochs, "log_path": args.result_path,
+             "shadow_path": args.lira_shadow_path, "shadow_diff_init": True})
 
     if args.attack == "aug":
         if args.dataset == "purchase100" or args.dataset == "texas100":
             raise ValueError("augmentation attack is not supported for non-image datsets")
         return aug_mia.AugAuxiliaryInfo(
-            {'device': device, 'seed': args.seed, 'save_path': args.preparation_path, 'num_classes': num_classes,
-             'batch_size': args.batch_size, 'lr': 0.1, 'epochs': args.attack_epochs, 'log_path': args.result_path})
+            {"device": device, "seed": args.seed, "save_path": args.preparation_path, "num_classes": num_classes,
+             "batch_size": args.batch_size, "lr": args.attack_lr, "epochs": args.attack_epochs, "log_path": args.result_path})
     
     else:
         raise ValueError("Invalid attack type")
@@ -316,46 +318,46 @@ def delete_files_in_directory(directory):
             print(f"Failed to delete {file_path}. Reason: {e}")
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='obtain_membership_inference_prediction')
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="obtain_membership_inference_prediction")
 
     # special arguments
     """if this argument is not non, the script will only save the dataset and exit. This is used to make sure the
     index - data mapping is consistent across different runs. This is useful when we want to compare the performance."""
-    parser.add_argument('--save_dataset', type=bool, default=False, help='whether to save the dataset')
-    parser.add_argument('--train_target_model', type=bool, default=False, help='whether to train the target model')
+    parser.add_argument("--save_dataset", type=bool, default=False, help="whether to save the dataset")
+    parser.add_argument("--train_target_model", type=bool, default=False, help="whether to train the target model")
 
     # mandatory arguments
-    parser.add_argument('--attack', type=str, default=None, help='MIA type: [losstraj, yeom, shokri ,lira, aug, calibration, top_k_shokri, reference, lira_offline]')
-    parser.add_argument('--target_model', type=str, default=None,
-                        help='target model arch: [resnet56, wrn32_4, vgg16, mobilenet, mlp_for_texas_purchase]')
-    parser.add_argument('--dataset', type=str, default=None, help='dataset: [cifar10, cifar100, cinic10, purchase100, texas100]')
-    parser.add_argument('--result_path', type=str, default=None, help='path to save the prediction')
-    parser.add_argument('--data_path', type=str, default=None, help='path to the dataset')
-    parser.add_argument('--dataset_file_root', type=str, default=None, help='path to the dataset on the server, used as a root for custom datasets')
-    parser.add_argument('--target_model_path', type=str, default=str(os.getcwd()), help='path to the target model')
-    parser.add_argument('--preparation_path', type=str, default=str(os.getcwd()), help='path to the preparation file')
-    parser.add_argument('--lira_shadow_path', type=str, default=str(os.getcwd()), help='path to the shadow model ('
-                                                                                       'only for lira and lira-based '
-                                                                                       'attacks)')
-    parser.add_argument('--target_set_ratio', type=float, default=0.5,
-                        help='the ratio of the data used for target model training over the whole dataset')
-    parser.add_argument('--train_test_ratio', type=float, default=0.5, help='train test ratio for target and MIA')
-    parser.add_argument('--delete-files', type=bool, default=True,
-                        help='whether to delete the preparation files after training')
-    parser.add_argument('--shuffle_seed', type=int, default=1, help='seed for shuffling the dataset')
+    parser.add_argument("--attack", type=str, default=None, help="MIA type: [losstraj, yeom, shokri ,lira, aug, calibration, top_k_shokri, reference, lira_offline]")
+    parser.add_argument("--target_model", type=str, default=None,
+                        help="target model arch: [resnet56, wrn32_4, vgg16, mobilenet, mlp_for_texas_purchase]")
+    parser.add_argument("--dataset", type=str, default=None, help="dataset: [cifar10, cifar100, cinic10, purchase100, texas100]")
+    parser.add_argument("--result_path", type=str, default=None, help="path to save the prediction")
+    parser.add_argument("--data_path", type=str, default=None, help="path to the dataset")
+    parser.add_argument("--dataset_file_root", type=str, default=None, help="path to the dataset on the server, used as a root for custom datasets")
+    parser.add_argument("--target_model_path", type=str, default=str(os.getcwd()), help="path to the target model")
+    parser.add_argument("--preparation_path", type=str, default=str(os.getcwd()), help="path to the preparation file")
+    parser.add_argument("--lira_shadow_path", type=str, default=str(os.getcwd()), help="path to the shadow model ("
+                                                                                       "only for lira and lira-based "
+                                                                                       "attacks)")
+    parser.add_argument("--target_set_ratio", type=float, default=0.5,
+                        help="the ratio of the data used for target model training over the whole dataset")
+    parser.add_argument("--train_test_ratio", type=float, default=0.5, help="train test ratio for target and MIA")
+    parser.add_argument("--delete-files", type=bool, default=True,
+                        help="whether to delete the preparation files after training")
+    parser.add_argument("--shuffle_seed", type=int, default=1, help="seed for shuffling the dataset")
 
-    parser.add_argument('--canaries', type=int, default=0, help='number of canaries to use for the attack')
+    parser.add_argument("--canaries", type=int, default=0, help="number of canaries to use for the attack")
 
     # optional arguments (eg. training hyperparameters)
-    parser.add_argument('--seed', type=int, default=0, help='random seed')
-    parser.add_argument('--data_aug', type=bool, default=False, help='whether to use data augmentation')
-    parser.add_argument('--attack_lr', type=float, default=0.1, help='learning rate for MIA training')
-    parser.add_argument('--attack_epochs', type=int, default=100, help='number of epochs for MIA training')
-    parser.add_argument('--target_epochs', type=int, default=100, help='number of epochs for target model training')
-    parser.add_argument('--batch_size', type=int, default=512, help='batch size')
-    parser.add_argument('--num_workers', type=int, default=2, help='number of workers')
-    parser.add_argument('--device', type=str, default='cuda', help='device to train the model')
+    parser.add_argument("--seed", type=int, default=0, help="random seed")
+    parser.add_argument("--data_aug", type=bool, default=False, help="whether to use data augmentation")
+    parser.add_argument("--attack_lr", type=float, default=0.1, help="learning rate for MIA training")
+    parser.add_argument("--attack_epochs", type=int, default=100, help="number of epochs for MIA training")
+    parser.add_argument("--target_epochs", type=int, default=100, help="number of epochs for target model training")
+    parser.add_argument("--batch_size", type=int, default=512, help="batch size")
+    parser.add_argument("--num_workers", type=int, default=2, help="number of workers")
+    parser.add_argument("--device", type=str, default="cuda", help="device to train the model")
     args = parser.parse_args()
 
     if args.canaries > 0:
@@ -368,14 +370,14 @@ if __name__ == '__main__':
     if args.dataset == "purchase100" or args.dataset == "texas100":
         if args.target_model != "mlp_for_texas_purchase":
             raise ValueError("Invalid target model for purchase100 or texas100 dataset, only mlp_for_texas_purchase is supported")
-    elif args.dataset == "cifar10" or args.dataset == "cifar100" or args.dataset == "cinic10":
-        if args.target_model not in ["resnet56", "wrn32_4", "vgg16", "mobilenet"]:
-            raise ValueError("Invalid target model for cifar10, cifar100 or cinic10 dataset, only resnet56, wrn32_4, vgg16 and mobilenet are supported")
+    # elif args.dataset == "cifar10" or args.dataset == "cifar100" or args.dataset == "cinic10":
+    #     if args.target_model not in ["resnet56", "wrn32_4", "vgg16", "mobilenet"]:
+    #         raise ValueError("Invalid target model for cifar10, cifar100 or cinic10 dataset, only resnet56, wrn32_4, vgg16 and mobilenet are supported")
 
     # create all the necessary directories
     for path in [args.result_path, args.target_model_path, args.preparation_path, args.data_path]:
         if path is not None and not os.path.exists(path):
-            os.makedirs(path)
+            os.makedirs(path, exist_ok=True)
 
     if args.save_dataset:  # save the dataset and exit
         # initialize the dataset
@@ -439,21 +441,25 @@ if __name__ == '__main__':
     num_classes, input_size = load_dataset_info(args.dataset)
     dataset_to_attack = ConcatDataset([target_trainset, target_testset])
     target_membership = np.concatenate([np.ones(len(target_trainset)), np.zeros(len(target_testset))])
+    
+    if args.target_model in ["resnet56", "wrn32_4", "vgg16", "mobilenet", "densenet121", "resnet50", "alexnet", "vgg19"]:
+        target_model_copy = models.get_model(args.target_model, num_classes, input_size).to(args.device)
+        target_model = models.get_model(args.target_model, num_classes, input_size).to(args.device)
 
-    # training the target model
-    target_model_copy = models.get_model(args.target_model, num_classes, input_size).to(args.device)
-    target_model = models.get_model(args.target_model, num_classes, input_size).to(args.device)
     if args.train_target_model:  # we are only training the target model
         train_target_model(target_model, args.target_model_path, args.device, target_trainset, target_testset, args)
         exit(0)
     else:
-        if not os.path.exists(
-                os.path.join(args.target_model_path, "target_model_" + args.target_model + args.dataset + ".pkl")):
-            raise ValueError(
-                f'Target model does not exist at {os.path.join(args.target_model_path, "target_model_" + args.target_model + args.dataset + ".pkl")}')
-        target_model.load_state_dict(
-            torch.load(
-                os.path.join(args.target_model_path, "target_model_" + args.target_model + args.dataset + ".pkl")))
+        path = os.path.join(args.target_model_path, "target_model_" + args.target_model + args.dataset + ".pkl")
+        if os.path.exists(path):
+            target_model.load_state_dict( torch.load( path))
+        else:
+            state_dict = torch.load(args.target_model_path, weights_only=True)
+            new_state_dict = {}
+            for k in state_dict:
+                new_k = k.replace("_module.", "")
+                new_state_dict[new_k] = state_dict[k]
+            target_model.load_state_dict(new_state_dict)
         target_model.eval()
 
     # prepare the attack

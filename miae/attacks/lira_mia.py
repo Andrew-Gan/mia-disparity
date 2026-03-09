@@ -1,7 +1,6 @@
 # This code implements "Membership Inference Attacks From First Principles", S&P 2022
 # The code is based on the code from
 # https://github.com/tensorflow/privacy/tree/master/research/mi_lira_2021
-import copy
 import logging
 import os
 import re
@@ -18,7 +17,10 @@ from tqdm import tqdm
 from miae.attacks.base import ModelAccessType, AuxiliaryInfo, ModelAccess, MiAttack, MIAUtils
 from miae.utils.dataset_utils import get_xy_from_dataset
 from miae.utils.set_seed import set_seed
-
+import torch.multiprocessing as mp
+from torch.utils.data.distributed import DistributedSampler
+from torch.nn.parallel import DistributedDataParallel as DDP
+from torch.distributed import init_process_group, destroy_process_group
 
 class LiraModelAccess(ModelAccess):
     """
@@ -178,9 +180,86 @@ class LIRAUtil(MIAUtils):
         """
         Loads the model from the given path.
         """
-        model.load_state_dict(torch.load(path))
+        device = next(model.parameters()).device
+        model.load_state_dict(torch.load(path, map_location=device))
         model.eval()
         return model
+
+    @classmethod
+    def train_shadow_model_per_gpu(cls, expid, num_gpu, info, model, dataset, iteration_range):
+        rank = expid % num_gpu
+        torch.cuda.set_device(rank)
+        torch.cuda.manual_seed(expid)
+
+        device = f'cuda:{rank}'
+        my_model = model.to(device)
+
+        # Define the directory path
+        folder_name = expid
+        dir_path = f"{info.shadow_path}/{folder_name}"
+
+        if info.shadow_diff_init:
+            try:
+                set_seed((info.seed + expid)*100) # *100 to avoid overlapping of different instances
+                def initialize_weights(m):
+                    if isinstance(m, torch.nn.Conv2d):
+                        torch.nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                    elif isinstance(m, torch.nn.BatchNorm2d):
+                        m.weight.data.fill_(1)
+                        m.bias.data.zero_()
+                    elif isinstance(m, torch.nn.Linear):
+                        m.weight.data.normal_(0, 0.01)
+                        m.bias.data.zero_()
+                my_model.apply(initialize_weights)
+            except:
+                raise NotImplementedError("the model doesn't have .initialize_weights method")
+            
+        set_seed(info.seed)
+
+        # Check if the directory exists and create
+        if os.path.exists(dir_path):
+            if os.path.exists(dir_path + "/shadow.pth") and os.path.exists(dir_path + "/keep.npy"):
+                cls.log(info, f"shadow model {expid} already exists at {dir_path}, skip training", print_flag=True)
+                return
+        else:
+            cls._make_directory_if_not_exists(dir_path)
+
+        # split the data
+        shadow_train_indices, shadow_out_indices = _split_data(dataset, expid, iteration_range, info.seed)
+
+        # Create the data loaders for training and testing
+        shadow_train_loader = DataLoader(
+            Subset(dataset, shadow_train_indices), batch_size=info.batch_size,
+            shuffle=True, num_workers=0,
+        )
+        shadow_out_loader = DataLoader(
+            Subset(dataset, shadow_out_indices), batch_size=info.batch_size,
+            shuffle=False, num_workers=0,
+        )
+
+        optimizer = torch.optim.AdamW(filter(lambda p: p.requires_grad, my_model.parameters()), lr=info.lr)
+        scheduler = CosineAnnealingLR(optimizer, info.epochs)
+
+        cls.log(info, f"training shadow model #{expid} with "
+                        f"train size: {len(shadow_train_indices)} and test size: {len(shadow_out_indices)}",
+                print_flag=True)
+
+        for epoch in tqdm(range(1, info.epochs + 1)):
+            # print the length of the train and test set
+            loss, train_acc = LIRAUtil.train(my_model, device, shadow_train_loader, optimizer,
+                                                scheduler=scheduler)
+            test_acc = LIRAUtil.test(my_model, device, shadow_out_loader)
+            if (epoch % 20 == 0 or epoch == info.epochs):
+                cls.log(info, f"Train Shadow Model #{expid}: {epoch}/{info.epochs}: TRAIN loss: {loss:.3f}, "
+                                f"TRAIN acc: {train_acc * 100:.3f}%, TEST acc: {test_acc * 100:.3f}%, lr: {scheduler.get_last_lr()[0]: .4f}",
+                        print_flag=True)
+
+        # save model
+        LIRAUtil.save_model(my_model, f"{dir_path}/shadow.pth")
+        # save keep
+        is_in_train = np.full(len(dataset), False)
+        is_in_train[shadow_train_indices] = True
+        np.save(f"{dir_path}/keep.npy", is_in_train)
 
     @classmethod
     def train_shadow_models(cls, model, dataset, info: LiraAuxiliaryInfo):
@@ -193,7 +272,6 @@ class LIRAUtil(MIAUtils):
         # init
         set_seed(info.seed)
         iteration_range = info.num_shadow_models
-        device = torch.device(info.device)
 
         if not os.path.exists(info.shadow_path):
             os.makedirs(info.shadow_path)
@@ -203,66 +281,20 @@ class LIRAUtil(MIAUtils):
             cls.log(info, f"shadow models are already trained, skip the training", print_flag=True)
             return
 
+        mp.set_start_method('spawn')
+        gpu_count = torch.cuda.device_count()
+        print(f"Number of GPUs available: {gpu_count}")
 
-        for expid in range(iteration_range):
-            # Define the directory path
-            folder_name = expid
-            dir_path = f"{info.shadow_path}/{folder_name}"
+        # make sure GPUs copy from initialized model on CPU
+        model = model.to('cpu')
 
-            if info.shadow_diff_init:
-                try:
-                    set_seed((info.seed + expid)*100) # *100 to avoid overlapping of different instances
-                    model.initialize_weights()
-                except:
-                    raise NotImplementedError("the model doesn't have .initialize_weights method")
-                
-            set_seed(info.seed)
-
-            # Check if the directory exists and create
-            if os.path.exists(dir_path):
-                if os.path.exists(dir_path + "/shadow.pth") and os.path.exists(dir_path + "/keep.npy"):
-                    cls.log(info, f"shadow model {expid} already exists at {dir_path}, skip training", print_flag=True)
-                    continue
-            else:
-                cls._make_directory_if_not_exists(dir_path)
-
-            # split the data
-            shadow_train_indices, shadow_out_indices = _split_data(dataset, expid, iteration_range, info.seed)
-
-            # Create the data loaders for training and testing
-            shadow_train_loader = DataLoader(Subset(dataset, shadow_train_indices), batch_size=info.batch_size,
-                                             shuffle=True)
-            shadow_out_loader = DataLoader(Subset(dataset, shadow_out_indices), batch_size=info.batch_size,
-                                           shuffle=False)
-
-            curr_model = copy.deepcopy(model)
-            curr_model.to(device)
-
-            optimizer = torch.optim.SGD(filter(lambda p: p.requires_grad, curr_model.parameters()),
-                                        lr=info.lr, momentum=info.momentum, weight_decay=info.weight_decay)
-            scheduler = CosineAnnealingLR(optimizer, info.epochs)
-
-            cls.log(info, f"training shadow model #{expid} with "
-                          f"train size: {len(shadow_train_indices)} and test size: {len(shadow_out_indices)}",
-                    print_flag=True)
-
-            for epoch in tqdm(range(1, info.epochs + 1)):
-                # print the length of the train and test set
-                loss, train_acc = LIRAUtil.train(curr_model, device, shadow_train_loader, optimizer,
-                                                 scheduler=scheduler)
-                test_acc = LIRAUtil.test(curr_model, device, shadow_out_loader)
-                if (epoch % 20 == 0 or epoch == info.epochs):
-                    cls.log(info, f"Train Shadow Model #{expid}: {epoch}/{info.epochs}: TRAIN loss: {loss:.3f}, "
-                                    f"TRAIN acc: {train_acc * 100:.3f}%, TEST acc: {test_acc * 100:.3f}%, lr: {scheduler.get_last_lr()[0]: .4f}",
-                            print_flag=True)
-
-
-            # save model
-            LIRAUtil.save_model(curr_model, f"{dir_path}/shadow.pth")
-            # save keep
-            is_in_train = np.full(len(dataset), False)
-            is_in_train[shadow_train_indices] = True
-            np.save(f"{dir_path}/keep.npy", is_in_train)
+        for start in range(0, iteration_range, gpu_count):
+            end = min(start+gpu_count, iteration_range)
+            
+            args = [(expid, gpu_count, info, model, dataset, iteration_range) for expid in range(start, end)]
+            with mp.Pool(gpu_count) as p:
+                p.starmap(cls.train_shadow_model_per_gpu, args)
+            
 
     @classmethod
     def lira_mia(cls, keep, scores, check_scores, in_size=100000, out_size=100000,
@@ -375,6 +407,37 @@ class LIRAUtil(MIAUtils):
         return model_access.get_signal_lira(data_loader, device, augmentation=augmentation)
 
     @classmethod
+    def process_shadow_model_per_gpu(cls, index, num_gpu, dir_name, info, num_model,
+                                     shadow_model_arch, auxiliary_dataset, fullset_targets):
+        rank = (index-1) % num_gpu
+        torch.cuda.set_device(rank)
+        torch.cuda.manual_seed(index-1)
+        device = f'cuda:{rank}'
+
+        seed_folder = os.path.join(info.shadow_path, dir_name)
+        scores = None
+        keep = None
+        if os.path.isdir(seed_folder):
+            model_path = os.path.join(seed_folder, "shadow.pth")
+            cls.log(info, f"load model [{index}/{num_model}]: {model_path}", print_flag=True)
+            my_arch = shadow_model_arch.to(device)
+            model = cls.load_model(my_arch, path=model_path)
+            fullsetloader = DataLoader(auxiliary_dataset, batch_size=info.query_batch_size, shuffle=False, num_workers=0)
+            logits = cls._generate_logits(model, fullsetloader, info.augmentation_query, device).cpu().numpy()
+            scores, mean_acc = cls._calculate_score(logits, fullset_targets)
+            cls.log(info, f"Model {index} mean acc: {mean_acc}", print_flag=True)
+            # Convert the numpy array to a PyTorch tensor and add a new dimension
+            scores = torch.unsqueeze(torch.from_numpy(scores), 0)
+
+            keep_path = os.path.join(seed_folder, "keep.npy")
+            if os.path.isfile(keep_path):
+                keep = torch.unsqueeze(torch.from_numpy(np.load(keep_path)), 0)
+        else:
+            cls.log(info, f"model {index} at {model_path} does not exist, skip this record", print_flag=True)
+
+        return (scores, keep)
+
+    @classmethod
     def process_shadow_models(cls, info: LiraAuxiliaryInfo, auxiliary_dataset: Dataset, shadow_model_arch) \
             -> Tuple[List[torch.Tensor], List[torch.Tensor]]:
         """
@@ -387,38 +450,32 @@ class LIRAUtil(MIAUtils):
 
         :return: The list of scores and the list of kept indices.
         """
-        fullsetloader = DataLoader(auxiliary_dataset, batch_size=info.query_batch_size, shuffle=False, num_workers=2)
-
         _, fullset_targets = get_xy_from_dataset(auxiliary_dataset)
 
         score_list = []
         keep_list = []
         model_locations = sorted(os.listdir(info.shadow_path),
                                  key=lambda x: int(re.search(r'\d+', x).group()))  # os.listdir(info.shadow_path)
+        
+        try:
+            mp.set_start_method('spawn', force=True)
+        except RuntimeError:
+            pass
+        gpu_count = torch.cuda.device_count()
+        print(f"Number of GPUs available: {gpu_count}")
+        n = len(model_locations)
 
-        for index, dir_name in enumerate(model_locations, start=1):
-            seed_folder = os.path.join(info.shadow_path, dir_name)
-            if os.path.isdir(seed_folder):
-                model_path = os.path.join(seed_folder, "shadow.pth")
-                cls.log(info, f"load model [{index}/{len(model_locations)}]: {model_path}", print_flag=True)
-                model = cls.load_model(shadow_model_arch, path=model_path).to(info.device)
-                # print(shadow_model_arch, model_path)
-                scores, mean_acc = cls._calculate_score(cls._generate_logits(model,
-                                                                             fullsetloader,
-                                                                             info.augmentation_query,
-                                                                             info.device).cpu().numpy(),
-                                                        fullset_targets)
-                cls.log(info, f"Model {index} mean acc: {mean_acc}", print_flag=True)
-                # Convert the numpy array to a PyTorch tensor and add a new dimension
-                scores = torch.unsqueeze(torch.from_numpy(scores), 0)
-                score_list.append(scores)
+        args = [(index, gpu_count, dir_name, info, n, shadow_model_arch, auxiliary_dataset,
+                 fullset_targets) for index, dir_name in enumerate(model_locations, start=1)]
 
-                keep_path = os.path.join(seed_folder, "keep.npy")
-                if os.path.isfile(keep_path):
-                    keep = torch.unsqueeze(torch.from_numpy(np.load(keep_path)), 0)
-                    keep_list.append(keep)
-            else:
-                cls.log(info, f"model {index} at {model_path} does not exist, skip this record", print_flag=True)
+        for start in range(0, n, gpu_count):
+            end = min(start+gpu_count, n)
+            
+            with mp.Pool(gpu_count) as p:
+                results = p.starmap(cls.process_shadow_model_per_gpu, args[start:end])
+            for (score, keep) in results:
+                score_list.append(score)
+                keep_list.append(keep)
 
         return score_list, keep_list
 

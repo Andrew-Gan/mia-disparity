@@ -6,6 +6,8 @@ import torch.nn as nn
 import torch
 import numpy as np
 import torch.nn.functional as F
+# from opacus import PrivacyEngine
+import types
 
 
 def get_model(model_name, num_classes, input_size):
@@ -21,9 +23,22 @@ def get_model(model_name, num_classes, input_size):
         return create_mobilenet(num_classes=num_classes, input_size=input_size)
     elif model_name == 'mlp_for_texas_purchase':
         return create_mlp(input_size=input_size, num_classes=num_classes, layer_sizes=[512, 256, 128, 64])
+    elif model_name in ['densenet121', 'resnet50', 'alexnet', 'vgg19']:
+        return get_torchvision_model(model_name, num_classes)
     else:
         raise ValueError('Unknown model name')
-    
+
+
+def get_torchvision_model(model_name, num_classes):
+    model = torch.hub.load('pytorch/vision:v0.10.0', model_name)
+    if model_name == 'densenet121':
+        model.classifier = torch.nn.Linear(model.classifier.in_features, num_classes)
+    elif model_name == 'resnet50':
+        model.fc = torch.nn.Linear(model.fc.in_features, num_classes)
+    elif model_name == 'alexnet' or model_name == 'vgg19':
+        model.classifier[6] = torch.nn.Linear(model.classifier[6].in_features, num_classes)
+    # model = PrivacyEngine.get_compatible_module(model)
+    return model
 
 
 def create_mlp(input_size, num_classes, layer_sizes):
