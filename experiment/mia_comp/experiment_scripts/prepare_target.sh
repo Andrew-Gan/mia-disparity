@@ -1,5 +1,5 @@
 # modify this to set up directory:
-DATA_DIR="data"
+DATA_DIR="${SCRATCH}/mia/data"
 
 # This script is used to partition the dataset into target dataset and shadow dataset, then train the target model
 seed=0 # keep seed = 0
@@ -12,11 +12,11 @@ data_dir="${DATA_DIR}/miae_standard_exp/target"
 mkdir -p "$data_dir"
 
 
-datasets=("cifar10" "cifar100" "cinic10")
+datasets=("cifar10") #"cifar100" "cinic10")
 #datasets=("purchase100" "texas100")
 
 
- archs=("resnet56" "wrn32_4" "vgg16" "mobilenet")
+ archs=("resnet56") #"wrn32_4" "vgg16" "mobilenet")
 #archs=("mlp_for_texas_purchase")
 
 prepare_path="${DATA_DIR}/prepare_sd${seed}"

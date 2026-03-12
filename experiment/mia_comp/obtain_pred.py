@@ -368,7 +368,7 @@ if __name__ == '__main__':
     if args.dataset == "purchase100" or args.dataset == "texas100":
         if args.target_model != "mlp_for_texas_purchase":
             raise ValueError("Invalid target model for purchase100 or texas100 dataset, only mlp_for_texas_purchase is supported")
-    elif args.dataset == "cifar10" or args.dataset == "cifar100" or args.dataset == "cinic10":
+    elif not args.save_dataset and (args.dataset == "cifar10" or args.dataset == "cifar100" or args.dataset == "cinic10"):
         if args.target_model not in ["resnet56", "wrn32_4", "vgg16", "mobilenet"]:
             raise ValueError("Invalid target model for cifar10, cifar100 or cinic10 dataset, only resnet56, wrn32_4, vgg16 and mobilenet are supported")
 

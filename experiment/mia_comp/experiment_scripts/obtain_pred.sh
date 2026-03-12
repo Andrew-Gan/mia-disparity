@@ -1,5 +1,12 @@
+#!/bin/bash
+
+#SBATCH -A zghodsi -q normal --mem=128G -p ai -c 56 --gpus-per-node=4 --time=1440
+
+export TORCH_HOME=${SCRATCH}/torch/$1
+export HF_HUB_DISABLE_PROGRESS_BARS=1
+
 # modify this to set up directory:
-DATA_DIR="data"
+DATA_DIR="${SCRATCH}/mia/data"
 
 # This script is used to obtain the predictions of the attack on the target models
 seed=0
@@ -22,12 +29,12 @@ mkdir -p "$preds_dir"
 
 
 #datasets=("purchase100" "texas100")
- datasets=("cifar10" "cifar100" "cinic10")
+ datasets=("cifar10") # "cifar100" "cinic10")
 # datasets=("cifar10")
- archs=("resnet56" "wrn32_4" "vgg16" "mobilenet")
+ archs=("resnet56") # "wrn32_4" "vgg16" "mobilenet")
 # archs=("resnet56")
 #archs=("mlp_for_texas_purchase")
- mias=("lira" "reference" "shokri" "losstraj" "calibration" "yeom" "aug")
+ mias=("lira") # "reference" "shokri" "losstraj" "calibration" "yeom" "aug")
 
 
 
