@@ -13,6 +13,7 @@ import torch.nn.functional as F
 
 from miae.attacks.base import ModelAccessType, AuxiliaryInfo, ModelAccess, MiAttack, MIAUtils, AttackTrainingSet
 from miae.utils.set_seed import set_seed
+from experiment import models
 
 
 class AttackMLP(torch.nn.Module):
@@ -199,7 +200,16 @@ class ShokriAttack(MiAttack):
                 if self.aux_info.shadow_diff_init:
                     try:
                         set_seed((self.aux_info.seed + i)*100) # *100 to avoid overlapping of different instances
-                        shadow_model_i.initialize_weights()
+                        def initialize_weights(m):
+                            if isinstance(m, torch.nn.Conv2d):
+                                torch.nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                            elif isinstance(m, torch.nn.BatchNorm2d):
+                                m.weight.data.fill_(1)
+                                m.bias.data.zero_()
+                            elif isinstance(m, torch.nn.Linear):
+                                m.weight.data.normal_(0, 0.01)
+                                m.bias.data.zero_()
+                        shadow_model_i.apply(models.initialize_weights)
                     except:
                         raise NotImplementedError("the model doesn't have .initialize_weights method")
 

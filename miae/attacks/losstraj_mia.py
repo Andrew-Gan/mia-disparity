@@ -19,6 +19,7 @@ from typing import List, Optional, Union
 from miae.utils.set_seed import set_seed
 from miae.utils.dataset_utils import get_num_classes, dataset_split
 from miae.attacks.base import ModelAccessType, AuxiliaryInfo, ModelAccess, MiAttack, MIAUtils
+from experiment import models
 
 
 class AttackMLP(torch.nn.Module):
@@ -269,7 +270,7 @@ class LosstrajUtil(MIAUtils):
 
         try:
             set_seed(seed)
-            shadow_model.initialize_weights()
+            shadow_model.apply(models.initialize_weights)
         except:
             raise NotImplementedError("the model doesn't have .initialize_weights method")
 

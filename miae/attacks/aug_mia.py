@@ -18,6 +18,7 @@ import torch.nn.functional as F
 from miae.attacks.base import ModelAccessType, AuxiliaryInfo, ModelAccess, MiAttack, MIAUtils, AttackTrainingSet
 from miae.utils.set_seed import set_seed
 from miae.utils.dataset_utils import dataset_split, get_xy_from_dataset
+from experiment import models
 
 
 class AttackModel(nn.Module):
@@ -285,7 +286,8 @@ class AugAttack(MiAttack):
 
             try:
                 set_seed(self.aux_info.seed)
-                shadow_model.initialize_weights()
+                shadow_model.apply(models.initialize_weights)
+                
             except:
                 raise NotImplementedError("the model doesn't have .initialize_weights method")
 

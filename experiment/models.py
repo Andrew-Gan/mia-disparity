@@ -10,6 +10,17 @@ import torch.nn.functional as F
 import types
 
 
+def initialize_weights(m):
+    if isinstance(m, torch.nn.Conv2d):
+        torch.nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+    elif isinstance(m, torch.nn.BatchNorm2d):
+        m.weight.data.fill_(1)
+        m.bias.data.zero_()
+    elif isinstance(m, torch.nn.Linear):
+        m.weight.data.normal_(0, 0.01)
+        m.bias.data.zero_()
+
+
 def get_model(model_name, num_classes, input_size):
     if model_name == 'resnet56':
         return create_resnet56(num_classes=num_classes, input_size=input_size)

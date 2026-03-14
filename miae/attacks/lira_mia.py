@@ -18,9 +18,7 @@ from miae.attacks.base import ModelAccessType, AuxiliaryInfo, ModelAccess, MiAtt
 from miae.utils.dataset_utils import get_xy_from_dataset
 from miae.utils.set_seed import set_seed
 import torch.multiprocessing as mp
-from torch.utils.data.distributed import DistributedSampler
-from torch.nn.parallel import DistributedDataParallel as DDP
-from torch.distributed import init_process_group, destroy_process_group
+from experiment import models
 
 class LiraModelAccess(ModelAccess):
     """
@@ -201,16 +199,7 @@ class LIRAUtil(MIAUtils):
         if info.shadow_diff_init:
             try:
                 set_seed((info.seed + expid)*100) # *100 to avoid overlapping of different instances
-                def initialize_weights(m):
-                    if isinstance(m, torch.nn.Conv2d):
-                        torch.nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
-                    elif isinstance(m, torch.nn.BatchNorm2d):
-                        m.weight.data.fill_(1)
-                        m.bias.data.zero_()
-                    elif isinstance(m, torch.nn.Linear):
-                        m.weight.data.normal_(0, 0.01)
-                        m.bias.data.zero_()
-                my_model.apply(initialize_weights)
+                my_model.apply(models.initialize_weights)
             except:
                 raise NotImplementedError("the model doesn't have .initialize_weights method")
             

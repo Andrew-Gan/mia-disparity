@@ -18,6 +18,7 @@ from miae.attacks.base import ModelAccessType, AuxiliaryInfo, ModelAccess, MiAtt
 from miae.utils.set_seed import set_seed
 from miae.utils.dataset_utils import dataset_split
 from miae.attacks.shokri_mia import ShokriUtil # for logging and splitting dataset
+from experiment import models
 
 
 class CalibrationAuxiliaryInfo(AuxiliaryInfo):
@@ -158,7 +159,7 @@ class CalibrationAttack(MiAttack):
 
                 try:
                     set_seed(self.aux_info.seed)
-                    self.shadow_model.initialize_weights()
+                    self.shadow_model.apply(models.initialize_weights)
                 except:
                     raise NotImplementedError("the model doesn't have .initialize_weights method")
                 

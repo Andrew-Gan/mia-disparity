@@ -23,7 +23,7 @@ import sys
 sys.path.append(os.path.join(os.getcwd(), "..", ".."))
 
 from miae.utils.set_seed import set_seed
-from miae.attacks import lira_mia #losstraj_mia, shokri_mia, lira_mia, yeom_mia, aug_mia, calibration_mia, reference_mia
+from miae.attacks import losstraj_mia, shokri_mia, lira_mia, yeom_mia, aug_mia, calibration_mia, reference_mia
 from miae.attacks import base as mia_base
 from miae.utils import roc_auc, dataset_utils
 from experiment import models
@@ -252,7 +252,7 @@ def get_aux_info(args, device: str, num_classes: int) -> mia_base.AuxiliaryInfo:
         if args.attack == "lira":
             return lira_mia.LiraAuxiliaryInfo(
                 {"device": device, "seed": args.seed, "save_path": args.preparation_path, "num_classes": num_classes,
-                "batch_size": args.batch_size, "lr": args.attack_lr, "num_shadow_models": 8, "epochs": args.attack_epochs, "log_path": args.result_path,
+                "batch_size": args.batch_size, "lr": args.attack_lr, "num_shadow_models": 20, "epochs": args.attack_epochs, "log_path": args.result_path,
                 "shadow_path": args.lira_shadow_path, "shadow_diff_init": True, "augmentation_query": n_augmentation, "online": True})
         else:
             return lira_mia.LiraAuxiliaryInfo(

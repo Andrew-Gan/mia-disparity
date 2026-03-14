@@ -1,10 +1,16 @@
 #!/bin/bash
 
+#SBATCH -A zghodsi -q normal --mem=128G -p ai -c 56 --gpus-per-node=4 --time=1440
+
+export TORCH_HOME=${SCRATCH}/torch/$1
+export HF_HUB_DISABLE_PROGRESS_BARS=1
+
 # run it by: `bash run_multi_seed.sh {0..5}`
 # List of arguments
 seeds=("$@")
 
-DATA_DIR="data"
+# modify this to set up directory:
+DATA_DIR="${SCRATCH}/mia/data"
 
 script_out_dir=$DATA_DIR``
 
