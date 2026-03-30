@@ -1,6 +1,0 @@
-conda activate miae
-
-cd experiment/mia_comp
-
-sbatch -p ai -c 14 experiment_scripts/prepare_dataset.sh
-sbatch experiment_scripts/obtain_pred.sh

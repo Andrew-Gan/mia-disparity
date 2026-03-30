@@ -358,6 +358,7 @@ if __name__ == "__main__":
     parser.add_argument("--batch_size", type=int, default=512, help="batch size")
     parser.add_argument("--num_workers", type=int, default=2, help="number of workers")
     parser.add_argument("--device", type=str, default="cuda", help="device to train the model")
+    parser.add_argument("--dp", type=bool, default=False, help="attack dp pretrained model")
     args = parser.parse_args()
 
     if args.canaries > 0:
@@ -441,25 +442,31 @@ if __name__ == "__main__":
     num_classes, input_size = load_dataset_info(args.dataset)
     dataset_to_attack = ConcatDataset([target_trainset, target_testset])
     target_membership = np.concatenate([np.ones(len(target_trainset)), np.zeros(len(target_testset))])
-    
+
     if args.target_model in ["resnet56", "wrn32_4", "vgg16", "mobilenet", "densenet121", "resnet50", "alexnet", "vgg19"]:
         target_model_copy = models.get_model(args.target_model, num_classes, input_size).to(args.device)
         target_model = models.get_model(args.target_model, num_classes, input_size).to(args.device)
 
     if args.train_target_model:  # we are only training the target model
+        if args.dp:
+            print('DP models pretrained. Training skipped.')
+            exit(0)
         train_target_model(target_model, args.target_model_path, args.device, target_trainset, target_testset, args)
         exit(0)
     else:
         path = os.path.join(args.target_model_path, "target_model_" + args.target_model + args.dataset + ".pkl")
-        if os.path.exists(path):
-            target_model.load_state_dict( torch.load( path))
+        if not args.dp:
+            if os.path.exists(path):
+                target_model.load_state_dict( torch.load( path))
         else:
-            state_dict = torch.load(args.target_model_path, weights_only=True)
-            new_state_dict = {}
-            for k in state_dict:
-                new_k = k.replace("_module.", "")
-                new_state_dict[new_k] = state_dict[k]
-            target_model.load_state_dict(new_state_dict)
+            model_path = os.getenv('SCRATCH') + f'/blazedp/{args.target_model}.pth'
+            target_model_copy = torch.load(model_path, weights_only=False)
+            target_model = torch.load(model_path, weights_only=False)
+            # new_state_dict = {}
+            # for k in state_dict:
+            #     new_k = k.replace("_module.", "")
+            #     new_state_dict[new_k] = state_dict[k]
+            # target_model.load_state_dict(new_state_dict)
         target_model.eval()
 
     # prepare the attack

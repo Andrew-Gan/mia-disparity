@@ -2,7 +2,7 @@
 
 #SBATCH -A zghodsi -q normal --mem=128G -p ai -c 56 --gpus-per-node=4 --time=1440
 
-export TORCH_HOME=${SCRATCH}/torch/$1
+export TORCH_HOME=${SCRATCH}/torch
 export HF_HUB_DISABLE_PROGRESS_BARS=1
 
 # run it by: `bash run_multi_seed.sh {0..5}`
@@ -25,7 +25,7 @@ for sd in "${seeds[@]}"; do
     fi
 
     # Launch the experiment and save output to log file
-    CUDA_VISIBLE_DEVICES=1 ./experiment_scripts/obtain_pred.sh "$sd" > "$log_file" 2>&1 &
+    ./experiment_scripts/obtain_pred.sh "$sd" > "$log_file" 2>&1 &
 done
 
 # Wait for all background processes to complete

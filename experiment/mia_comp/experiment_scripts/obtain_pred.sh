@@ -2,7 +2,7 @@
 
 #SBATCH -A zghodsi -q normal --mem=128G -p ai -c 56 --gpus-per-node=4 --time=1440
 
-export TORCH_HOME=${SCRATCH}/torch/$1
+export TORCH_HOME=${SCRATCH}/torch
 export HF_HUB_DISABLE_PROGRESS_BARS=1
 
 # modify this to set up directory:
@@ -29,9 +29,9 @@ mkdir -p "$preds_dir"
 
 
 #datasets=("purchase100" "texas100")
- datasets=("cifar100") #("cifar10" "cifar100" "cinic10")
+ datasets=("cifar100")
 # datasets=("cifar10")
- archs=("densenet121" "resnet50" "alexnet" "vgg19") #("resnet56" "wrn32_4" "vgg16" "mobilenet")
+ archs=("densenet121" "resnet50" "vgg19")
 # archs=("resnet56")
 #archs=("mlp_for_texas_purchase")
  mias=("lira" "reference" "shokri" "losstraj" "calibration" "yeom" "aug")
@@ -100,7 +100,9 @@ fi
             --data_path "$data_dir" \
             --device "cuda:0" \
             --dataset_file_root="$data_dir" \
-            --lira_shadow_path "$lira_shadow_dir"
+            --lira_shadow_path "$lira_shadow_dir" \
+            --attack_lr "0.0001" \
+            --dp "True"
 
             rm -r "$prepare_path"
         done

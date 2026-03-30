@@ -1,22 +1,22 @@
 # This script generates Venn diagrams for the MIAE experiment under different settings
 
 # modify this to set up directory:
-DATA_DIR="data"
+DATA_DIR="${SCRATCH}/mia/data"
 
 # ---------- Experiment Parameters ----------
 # |     uncomment the one you want to run   |
 # -------------------------------------------
 # Define experiment parameters set 1 for standard MIAE
-#datasets=("cifar100" "cinic10" "cifar10") # "cifar100" "cinic10" "cifar10"
-#archs=("resnet56" "mobilenet" "wrn32_4" "vgg16") #"mobilenet" "wrn32_4" "vgg16"
-#mias=("losstraj" "reference" "shokri" "yeom" "calibration" "aug" "lira") # "losstraj" "reference" "shokri" "yeom" "calibration" "aug" "lira"
-#categories=("fpr" "threshold" "single_attack") # "threshold" "fpr" "single_attack"
-#subcategories=("pairwise") # "common_tp"
-#top_k=0
-#experiment_dir="${DATA_DIR}/mia_standard_exp"
-#option=("TPR")
-#seeds=(0 1 2 3 4)
-#fprs=(0 0.001 0.01 0.1 0.2 0.3 0.4 0.5 0.8)
+datasets=("cifar100") # "cifar100" "cinic10" "cifar10"
+archs=("densenet121" "resnet50" "vgg19") #"mobilenet" "wrn32_4" "vgg16"
+mias=("lira") # "losstraj" "reference" "shokri" "yeom" "calibration" "aug" "lira"
+categories=("fpr" "threshold" "single_attack") # "threshold" "fpr" "single_attack"
+subcategories=("pairwise") # "common_tp"
+top_k=0
+experiment_dir="${DATA_DIR}/miae_standard_exp"
+option=("TPR")
+seeds=(0 1 2 3 4 5)
+fprs=(0 0.001 0.01 0.1 0.2 0.3 0.4 0.5 0.8)
 
 # Define experiment parameters set 2 for standard MIAE
 #datasets=("purchase100" "texas100") # "purchase100" "texas100"
@@ -25,7 +25,7 @@ DATA_DIR="data"
 #categories=("fpr" "threshold" "single_attack")
 #subcategories=("pairwise")
 #top_k=0
-#experiment_dir="${DATA_DIR}/mia_standard_exp"
+#experiment_dir="${DATA_DIR}/miae_standard_exp"
 #option=("TPR")
 #seeds=(0 1 2 3 4)
 #fprs=(0 0.001 0.01 0.1 0.2 0.3 0.4 0.5 0.8)
