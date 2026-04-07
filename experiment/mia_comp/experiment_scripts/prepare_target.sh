@@ -1,12 +1,12 @@
 #!/bin/bash
 
-#SBATCH -A zghodsi -q normal --mem=128G -p ai -c 56 --gpus-per-node=4 --time=1440
+#SBATCH -A zghodsi -q normal --mem=64G -p ai -c 14 --gpus-per-node=1 --time=1440
 
 export TORCH_HOME=${SCRATCH}/torch
 export HF_HUB_DISABLE_PROGRESS_BARS=1
 
 # modify this to set up directory:
-DATA_DIR="${SCRATCH}/mia/data"
+export DATA_DIR="${SCRATCH}/mia/data"
 
 # This script is used to partition the dataset into target dataset and shadow dataset, then train the target model
 seed=0 # keep seed = 0
@@ -21,7 +21,7 @@ mkdir -p "$data_dir"
 datasets=("cifar10")
 #datasets=("purchase100" "texas100")
 
- archs=("densenet121" "resnet50" "vgg19")
+archs=("densenet121" "resnet50" "alexnet" "vgg19")
 #archs=("mlp_for_texas_purchase")
 
 prepare_path="${DATA_DIR}/prepare_sd${seed}"
@@ -45,7 +45,7 @@ for dataset in "${datasets[@]}"; do
   mkdir -p "$data_dir/$dataset"
   # save the dataset
   echo "Saving dataset $dataset"
-  python3 obtain_pred.py --dp "True" --dataset "$dataset" --save_dataset "True" --data_path "$data_dir" --seed "$seed" --data_aug "True" --shuffle_seed "$shuffle_seed"
+  python3 obtain_pred.py --pretrained "True" --dataset "$dataset" --save_dataset "True" --data_path "$data_dir" --seed "$seed" --data_aug "True" --shuffle_seed "$shuffle_seed"
     for arch in "${archs[@]}"; do
       # for each arch, train the target model
       mkdir -p "$target_model_path/$dataset/$arch"
@@ -59,6 +59,6 @@ for dataset in "${datasets[@]}"; do
       python3 obtain_pred.py --train_target_model "True" --dataset "$dataset" --target_model "$arch" \
        --seed "$seed" --delete-files "True" --data_aug "True"  --target_model_path "$target_model_save_path" \
        --attack_epochs "$num_epoch" --target_epochs "$num_epoch" --data_path "$data_dir" --shuffle_seed "$shuffle_seed" \
-       --attack_lr "0.0001" --dp "True"
+       --attack_lr "0.001" --pretrained "True"
     done
 done

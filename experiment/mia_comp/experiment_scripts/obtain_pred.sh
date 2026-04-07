@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH -A zghodsi -q normal --mem=128G -p ai -c 56 --gpus-per-node=4 --time=1440
+#SBATCH -A zghodsi -q normal --mem=16G -p ai -c 14 --gpus-per-node=1 --time=60
 
 export TORCH_HOME=${SCRATCH}/torch
 export HF_HUB_DISABLE_PROGRESS_BARS=1
@@ -29,12 +29,12 @@ mkdir -p "$preds_dir"
 
 
 #datasets=("purchase100" "texas100")
- datasets=("cifar100")
-# datasets=("cifar10")
+datasets=("cifar10")
  archs=("densenet121" "resnet50" "vgg19")
 # archs=("resnet56")
 #archs=("mlp_for_texas_purchase")
- mias=("lira" "reference" "shokri" "losstraj" "calibration" "yeom" "aug")
+ mias=("lira")
+#  mias=("lira" "reference" "shokri" "losstraj" "calibration" "yeom" "aug")
 
 
 
@@ -96,13 +96,11 @@ fi
             --data_aug "False"  \
             --target_model_path "$target_model_save_path" \
             --attack_epochs "$num_epoch" \
-            --target_epochs "$num_epoch" \
             --data_path "$data_dir" \
             --device "cuda:0" \
             --dataset_file_root="$data_dir" \
             --lira_shadow_path "$lira_shadow_dir" \
-            --attack_lr "0.0001" \
-            --dp "True"
+            --pretrained "True"
 
             rm -r "$prepare_path"
         done

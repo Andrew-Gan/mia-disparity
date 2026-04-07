@@ -5,12 +5,11 @@ experiment_dir="${DATA_DIR}/miae_standard_exp"
 
 plot_dir="${DATA_DIR}/miae_standard_exp/multiseed_convergence"
 
-datasets=("cifar100") #("cifar10" "cifar100")
+datasets=("cifar10") #("cifar10" "cifar100")
 archs=("densenet121" "resnet50" "vgg19") #("resnet56")
-mias=("losstraj" "shokri" "yeom" "lira" "calibration" "reference")
-fprs=(0.001 0.01 0.1 0.2 0.3 0.4 0.5 0.8)
-# seeds=(0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15)
-seeds=(0 1 2 3 4 5)
+mias=("lira") #("losstraj" "shokri" "yeom" "lira" "calibration" "reference")
+fprs=(0.1) #(0.001 0.01 0.1 0.2 0.3 0.4 0.5 0.8)
+seeds=(0) #(0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15)
 
 # prepare the list of mias and fprs as arguments
 mialist=""

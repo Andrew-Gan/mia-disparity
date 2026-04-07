@@ -1,7 +1,5 @@
 #!/bin/bash
 
-#SBATCH -A zghodsi -q normal --mem=128G -p ai -c 56 --gpus-per-node=4 --time=1440
-
 export TORCH_HOME=${SCRATCH}/torch
 export HF_HUB_DISABLE_PROGRESS_BARS=1
 
@@ -17,7 +15,7 @@ script_out_dir=$DATA_DIR``
 # for each seed
 for sd in "${seeds[@]}"; do
     log_file="${script_out_dir}/output_${sd}.log"
-    
+
     # Remove the log file if it exists
     if [ -f "$log_file" ]; then
         rm "$log_file"
@@ -25,10 +23,10 @@ for sd in "${seeds[@]}"; do
     fi
 
     # Launch the experiment and save output to log file
-    ./experiment_scripts/obtain_pred.sh "$sd" > "$log_file" 2>&1 &
+    sbatch --output="$log_file" --error="$log_file" ./experiment_scripts/obtain_pred.sh "$sd"
 done
 
-# Wait for all background processes to complete
-wait
+# # Wait for all background processes to complete
+# wait
 
-echo "All tasks completed. Check output files in $script_out_dir"
+echo "All tasks launched. Check output files in $script_out_dir"

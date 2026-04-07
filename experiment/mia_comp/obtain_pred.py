@@ -48,10 +48,6 @@ def get_dataset(dataset_name, aug, targetset_ratio, train_test_ratio, data_dir, 
         dataset = datasets.get_cifar10(aug)
         num_classes = 10
         input_size = 32
-    elif dataset_name == 'cifar10_enlarged':
-        dataset = datasets.get_cifar10_enlarged(aug)
-        num_classes = 10
-        input_size = 256
     elif dataset_name == "cifar100":
         dataset = datasets.get_cifar100(aug)
         num_classes = 100
@@ -326,6 +322,8 @@ if __name__ == "__main__":
     index - data mapping is consistent across different runs. This is useful when we want to compare the performance."""
     parser.add_argument("--save_dataset", type=bool, default=False, help="whether to save the dataset")
     parser.add_argument("--train_target_model", type=bool, default=False, help="whether to train the target model")
+    parser.add_argument("--train_shadow_models", type=bool, default=False, help="whether to train the shadow models")
+    parser.add_argument("--shadow_id", type=int, default=0)
 
     # mandatory arguments
     parser.add_argument("--attack", type=str, default=None, help="MIA type: [losstraj, yeom, shokri ,lira, aug, calibration, top_k_shokri, reference, lira_offline]")
@@ -358,7 +356,7 @@ if __name__ == "__main__":
     parser.add_argument("--batch_size", type=int, default=512, help="batch size")
     parser.add_argument("--num_workers", type=int, default=2, help="number of workers")
     parser.add_argument("--device", type=str, default="cuda", help="device to train the model")
-    parser.add_argument("--dp", type=bool, default=False, help="attack dp pretrained model")
+    parser.add_argument("--pretrained", type=bool, default=False, help="attack pretrained model")
     args = parser.parse_args()
 
     if args.canaries > 0:
@@ -448,25 +446,18 @@ if __name__ == "__main__":
         target_model = models.get_model(args.target_model, num_classes, input_size).to(args.device)
 
     if args.train_target_model:  # we are only training the target model
-        if args.dp:
-            print('DP models pretrained. Training skipped.')
-            exit(0)
-        train_target_model(target_model, args.target_model_path, args.device, target_trainset, target_testset, args)
+        if not args.pretrained:
+            train_target_model(target_model, args.target_model_path, args.device, target_trainset, target_testset, args)
         exit(0)
     else:
         path = os.path.join(args.target_model_path, "target_model_" + args.target_model + args.dataset + ".pkl")
-        if not args.dp:
+        if not args.pretrained:
             if os.path.exists(path):
                 target_model.load_state_dict( torch.load( path))
         else:
             model_path = os.getenv('SCRATCH') + f'/blazedp/{args.target_model}.pth'
             target_model_copy = torch.load(model_path, weights_only=False)
             target_model = torch.load(model_path, weights_only=False)
-            # new_state_dict = {}
-            # for k in state_dict:
-            #     new_k = k.replace("_module.", "")
-            #     new_state_dict[new_k] = state_dict[k]
-            # target_model.load_state_dict(new_state_dict)
         target_model.eval()
 
     # prepare the attack
@@ -474,6 +465,11 @@ if __name__ == "__main__":
     aux_info = get_aux_info(args, args.device, num_classes)
     attack = get_attack(args, aux_info, target_model_access)
     attack.prepare(aux_set)
+
+    # train the shadow models
+    if args.train_shadow_models: # we are only training the shadow models
+        attack.train(dataset_to_attack, shadow_id=args.shadow_id)
+        exit(0)
 
     # obtain the prediction
     pred = attack.infer(dataset_to_attack)
