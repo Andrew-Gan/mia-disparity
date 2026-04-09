@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH -A zghodsi -q normal --mem=16G -p ai -c 14 --gpus-per-node=1 --time=60
+#SBATCH -A zghodsi -q normal --mem=16G -p a30 -c 8 --mem=16G --gpus-per-node=1 --time=1440
 
 export TORCH_HOME=${SCRATCH}/torch
 export HF_HUB_DISABLE_PROGRESS_BARS=1
@@ -9,11 +9,11 @@ export HF_HUB_DISABLE_PROGRESS_BARS=1
 DATA_DIR="${SCRATCH}/mia/data"
 
 # This script is used to obtain the predictions of the attack on the target models
-seed=0
+seed=$1
 
-if [ $# -eq 1 ]; then  # if the number of arguments is 1, the argument is the seed
-    seed=$1
-fi
+# if [ $# -eq 1 ]; then  # if the number of arguments is 1, the argument is the seed
+#     seed=$1
+# fi
 
 echo "obtain_pred.sh seed = $seed"
 
@@ -30,11 +30,8 @@ mkdir -p "$preds_dir"
 
 #datasets=("purchase100" "texas100")
 datasets=("cifar10")
- archs=("densenet121" "resnet50" "vgg19")
-# archs=("resnet56")
-#archs=("mlp_for_texas_purchase")
- mias=("lira")
-#  mias=("lira" "reference" "shokri" "losstraj" "calibration" "yeom" "aug")
+archs=$2 #("densenet121" "resnet50" "vgg19") ("resnet56" "mlp_for_texas_purchase")
+mias=("lira") #("lira" "reference" "shokri" "losstraj" "calibration" "yeom" "aug")
 
 
 

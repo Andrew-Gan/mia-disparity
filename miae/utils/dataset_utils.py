@@ -41,7 +41,7 @@ class CanarySet(Dataset):
         """
         return len(self.subset)
 
-def get_xy_from_dataset(dataset: Dataset) -> Tuple[np.ndarray, np.ndarray]:
+def get_xy_from_dataset(dataset: Dataset, only_y=False) -> Tuple[np.ndarray, np.ndarray]:
     """
     Get x and y from a dataset
     :param dataset: dataset
@@ -50,14 +50,18 @@ def get_xy_from_dataset(dataset: Dataset) -> Tuple[np.ndarray, np.ndarray]:
     x = []
     y = []
 
-    for item in dataset:
-        data, label = item
-        x.append(data.numpy())
+    for data, label in dataset:
+        if not only_y:
+            x.append(data.numpy())
         y.append(label)
 
     # Convert lists to numpy arrays
-    x = np.array(x)
+    if not only_y:
+        x = np.array(x)
     y = np.array(y)
+
+    if only_y:
+        return y
 
     return x, y
 

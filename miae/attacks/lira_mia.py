@@ -392,7 +392,7 @@ class LIRAUtil(MIAUtils):
         """
         fullsetloader = DataLoader(auxiliary_dataset, batch_size=info.query_batch_size, shuffle=False, num_workers=8, pin_memory=True)
 
-        _, fullset_targets = get_xy_from_dataset(auxiliary_dataset)
+        fullset_targets = get_xy_from_dataset(auxiliary_dataset, only_y=True)
 
         score_list = []
         keep_list = []
@@ -439,7 +439,7 @@ class LIRAUtil(MIAUtils):
         """
         dataset_loader = torch.utils.data.DataLoader(dataset, batch_size=info.query_batch_size, shuffle=False, num_workers=8, pin_memory=True)
 
-        _, fullset_targets = get_xy_from_dataset(dataset)
+        fullset_targets = get_xy_from_dataset(dataset, only_y=True)
 
         score_list = []
 

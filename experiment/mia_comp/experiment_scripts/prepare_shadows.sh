@@ -1,12 +1,15 @@
 #!/bin/bash
 
+#SBATCH -A zghodsi -q normal --mem=16G -p a30 -c 8 --gpus-per-node=1 --time=120
+
 datasets=("cifar10")
-archs=("vgg19") #("densenet121" "resnet50" "alexnet" "vgg19")
+archs=$1
+# archs=("densenet121" "resnet50" "alexnet" "vgg19")
 mia="lira"
 
 export DATA_DIR="${SCRATCH}/mia/data"
 
-seed=1 # keep seed = 0
+seed=$2 # keep seed = 0
 preds_dir="${DATA_DIR}/miae_standard_exp/preds_sd${seed}"
 
 for dataset in "${datasets[@]}"; do

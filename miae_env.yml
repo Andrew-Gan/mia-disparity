@@ -5,6 +5,7 @@ channels:
   - nvidia
   - defaults
 dependencies:
+  - cupy=14.0.1
   - matplotlib=3.7.1=py311h06a4308_1
   - matplotlib-base=3.7.1=py311ha02d727_1
   - matplotlib-inline=0.1.6=py311h06a4308_0

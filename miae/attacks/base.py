@@ -135,11 +135,12 @@ class ModelAccess(ABC):
             """
             Applies shifting augmentation to the image.
             """
+            size = image[0].shape[-1]
             padded_image = torch.nn.functional.pad(image, (shift, shift, shift, shift), mode='reflect')
             shifts = []
             for dx in range(0, 2 * shift + 1):
                 for dy in range(0, 2 * shift + 1):
-                    shifted = padded_image[:, :, dx:dx + 32, dy:dy + 32]
+                    shifted = padded_image[:, :, dx:dx + size, dy:dy + size]
                     shifts.append(shifted)
             return shifts
 

@@ -4,13 +4,13 @@
 DATA_DIR="${SCRATCH}/mia/data"
 
 
-experiment_dir="${DATA_DIR}/miae_experiment_aug_more_target_data"
-plot_dir="${DATA_DIR}/miae_experiment_aug_more_target_data/graphs_eli/auc"
+experiment_dir="${DATA_DIR}/miae_standard_exp"
+plot_dir="${DATA_DIR}/miae_standard_exp/graphs_eli/auc"
 tmp_dir="${DATA_DIR}"
 #plot_dir="$tmp_dir/repeat_graphs/auc"
 
 datasets=("cifar10")
-archs=("densenet121" "resnet50" "vgg19") #("resnet56")
+archs=("alexnet") #("densenet121" "resnet50" "vgg19") #("resnet56")
 mias=("lira") #("losstraj" "shokri" "yeom" "aug" "calibration" "lira" "reference")
 fprs=(0.1) #(0.001 0.01 0.1 0.2 0.3 0.4 0.5 0.8)
 seeds=(0) #(0 1 2 3 4 5)

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH -A zghodsi -q normal --mem=16G -p ai -c 14 --gpus-per-node=1 --time=30
+#SBATCH -A zghodsi -q normal --mem=16G -p a30 -c 8 --gpus-per-node=1 --time=120
 
 export TORCH_HOME=${SCRATCH}/torch
 export HF_HUB_DISABLE_PROGRESS_BARS=1
