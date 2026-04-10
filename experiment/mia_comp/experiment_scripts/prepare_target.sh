@@ -18,11 +18,10 @@ data_dir="${DATA_DIR}/miae_standard_exp/target"
 #data_dir="${DATA_DIR}/repeat_miae_standard_exp/miae_standard_exp_0/target"
 mkdir -p "$data_dir"
 
-datasets=("cifar10")
+datasets=("cifar10_32")
 #datasets=("purchase100" "texas100")
 
-archs=("densenet121" "resnet50" "alexnet" "vgg19")
-#archs=("mlp_for_texas_purchase")
+archs=("resnet56") #("densenet121" "resnet50" "alexnet" "vgg19")
 
 prepare_path="${DATA_DIR}/prepare_sd${seed}"
 
@@ -30,7 +29,9 @@ target_model_path="$data_dir/target_models"
 
 for dataset in "${datasets[@]}"; do
   # if assign different num_epoch for different dataset
-  if [ "$dataset" == "cifar10" ]; then
+  if [ "$dataset" == "cifar10_32" ]; then
+    num_epoch=60
+  elif [ "$dataset" == "cifar10_256" ]; then
     num_epoch=60
   elif [ "$dataset" == "cifar100" ]; then
     num_epoch=100

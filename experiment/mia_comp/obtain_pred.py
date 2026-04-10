@@ -44,10 +44,14 @@ def get_dataset(dataset_name, aug, targetset_ratio, train_test_ratio, data_dir, 
     :param shuffle_seed: seed for shuffling the dataset, default to 1
     :return:
     """
-    if dataset_name == "cifar10":
-        dataset = datasets.get_cifar10(aug)
+    if dataset_name == "cifar10_32":
+        dataset = datasets.get_cifar10_32(aug)
         num_classes = 10
         input_size = 32
+    elif dataset_name == "cifar10_256":
+        dataset = datasets.get_cifar10_256(aug)
+        num_classes = 10
+        input_size = 224
     elif dataset_name == "cifar100":
         dataset = datasets.get_cifar100(aug)
         num_classes = 100
@@ -85,9 +89,12 @@ def load_dataset_info(datset_name):
     :param datset_name: name of the dataset
     :return: number of classes and input size
     """
-    if datset_name == "cifar10":
+    if datset_name == "cifar10_32":
         num_classes = 10
         input_size = 32
+    elif datset_name == "cifar10_256":
+        num_classes = 10
+        input_size = 224
     elif datset_name == "cifar100":
         num_classes = 100
         input_size = 32

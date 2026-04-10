@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH -A zghodsi -q normal --mem=16G -p a30 -c 8 --mem=16G --gpus-per-node=1 --time=1440
+#SBATCH -A zghodsi -q normal --mem=16G -p ai -c 14 --mem=16G --gpus-per-node=1 --time=1440
 
 export TORCH_HOME=${SCRATCH}/torch
 export HF_HUB_DISABLE_PROGRESS_BARS=1
@@ -29,15 +29,15 @@ mkdir -p "$preds_dir"
 
 
 #datasets=("purchase100" "texas100")
-datasets=("cifar10")
-archs=$2 #("densenet121" "resnet50" "vgg19") ("resnet56" "mlp_for_texas_purchase")
+datasets=("cifar10_32")
+archs=($2) #("densenet121" "resnet50" "vgg19") ("resnet56" "mlp_for_texas_purchase")
 mias=("lira") #("lira" "reference" "shokri" "losstraj" "calibration" "yeom" "aug")
 
 
 
 for dataset in "${datasets[@]}"; do
   # if assign different num_epoch for different dataset
-  if [ "$dataset" == "cifar10" ]; then
+  if [[ "$dataset" == "cifar10_32" || "$dataset" == "cifar10_256" ]]; then
     num_epoch=60
   elif [ "$dataset" == "cifar100" ]; then
     num_epoch=100

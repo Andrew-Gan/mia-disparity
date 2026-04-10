@@ -41,8 +41,29 @@ class PurchaseTexas100(Dataset):
         return feature, label
 
 
+def get_cifar10_32(aug: bool = True) -> ConcatDataset:
+    mean = [0.485, 0.456, 0.406]
+    std = [0.229, 0.224, 0.225]
+    regular_transform = T.Compose([T.ToTensor(),
+                                   T.Normalize(mean=mean, std=std)])
 
-def get_cifar10(aug: bool = True) -> ConcatDataset:
+    augmentation_transform = T.Compose([T.RandomHorizontalFlip(),
+                                        T.RandomCrop(32, padding=4),
+                                        T.ToTensor(),
+                                        T.Normalize(mean=mean, std=std)])
+
+    transform = augmentation_transform if aug else regular_transform
+
+    trainset = torchvision.datasets.CIFAR10(root=os.getenv('DATA_DIR'), train=True,
+                                            download=True, transform=transform)
+
+    testset = torchvision.datasets.CIFAR10(root=os.getenv('DATA_DIR'), train=False,
+                                           download=True, transform=transform)
+
+    return ConcatDataset([trainset, testset])
+
+
+def get_cifar10_256(aug: bool = True) -> ConcatDataset:
     mean = [0.485, 0.456, 0.406]
     std = [0.229, 0.224, 0.225]
     regular_transform = T.Compose([T.ToTensor(),

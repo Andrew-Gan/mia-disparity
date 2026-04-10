@@ -6,7 +6,7 @@ export HF_HUB_DISABLE_PROGRESS_BARS=1
 # run it by: `bash run_multi_seed.sh {0..5}`
 # List of arguments
 seeds=("$@")
-arch=alexnet
+arch=resnet56
 
 # modify this to set up directory:
 DATA_DIR="${SCRATCH}/mia/data"
