@@ -119,7 +119,7 @@ class LIRAUtil(MIAUtils):
             data, target = data.to(device), target.to(device)
 
             output = model(data)
-            loss = nn.CrossEntropyLoss()(output, target)
+            loss = nn.CrossEntropyLoss(label_smoothing=0.1)(output, target)
 
             # backward
             loss.backward()
@@ -242,8 +242,10 @@ class LIRAUtil(MIAUtils):
             shuffle=False, num_workers=8, pin_memory=True,
         )
 
-        optimizer = torch.optim.AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=info.lr)
-        scheduler = CosineAnnealingLR(optimizer, info.epochs)
+        optimizer = torch.optim.SGD(model.parameters(), lr=info.lr, momentum=9e-1, weight_decay=1e-4, nesterov=True)
+        warmup = torch.optim.lr_scheduler.LinearLR(optimizer, start_factor=info.lr, total_iters=5)
+        cosine = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=info.epochs-5, eta_min=1e-4)
+        scheduler = torch.optim.lr_scheduler.SequentialLR(optimizer, schedulers=[warmup, cosine], milestones=[5])
 
         cls.log(info, f"training shadow model #{expid} with "
                         f"train size: {len(shadow_train_indices)} and test size: {len(shadow_out_indices)}",

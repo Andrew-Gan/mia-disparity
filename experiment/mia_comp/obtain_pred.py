@@ -453,18 +453,28 @@ if __name__ == "__main__":
         target_model = models.get_model(args.target_model, num_classes, input_size).to(args.device)
 
     if args.train_target_model:  # we are only training the target model
-        if not args.pretrained:
-            train_target_model(target_model, args.target_model_path, args.device, target_trainset, target_testset, args)
+        train_target_model(target_model, args.target_model_path, args.device, target_trainset, target_testset, args)
         exit(0)
     else:
-        path = os.path.join(args.target_model_path, "target_model_" + args.target_model + args.dataset + ".pkl")
-        if not args.pretrained:
-            if os.path.exists(path):
-                target_model.load_state_dict( torch.load( path))
-        else:
+        if args.pretrained:
             model_path = os.getenv('SCRATCH') + f'/blazedp/{args.target_model}.pth'
             target_model_copy = torch.load(model_path, weights_only=False)
             target_model = torch.load(model_path, weights_only=False)
+
+            # remove all sample grad functions
+            def remove_all_hooks(model: torch.nn.Module):
+                for module in model.modules():
+                    module._forward_hooks = {}
+                    module._forward_pre_hooks = {}
+                    module._backward_hooks = {}
+                    module._backward_pre_hooks = {}
+
+            remove_all_hooks(target_model)
+            remove_all_hooks(target_model_copy)
+        else:
+            path = os.path.join(args.target_model_path, "target_model_" + args.target_model + args.dataset + ".pkl")
+            if os.path.exists(path):
+                target_model.load_state_dict( torch.load( path))
         target_model.eval()
 
     # prepare the attack

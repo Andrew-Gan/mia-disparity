@@ -57,9 +57,9 @@ for dataset in "${datasets[@]}"; do
         echo "Target model for $dataset $arch already exists, skip"
         continue
       fi
-      python3 obtain_pred.py --train_target_model "True" --dataset "$dataset" --target_model "$arch" \
-       --seed "$seed" --delete-files "True" --data_aug "True"  --target_model_path "$target_model_save_path" \
-       --attack_epochs "$num_epoch" --target_epochs "$num_epoch" --data_path "$data_dir" --shuffle_seed "$shuffle_seed" \
-       --attack_lr "0.001" --pretrained "True"
+      # python3 obtain_pred.py --train_target_model "True" --dataset "$dataset" --target_model "$arch" \
+      #  --seed "$seed" --delete-files "True" --data_aug "True"  --target_model_path "$target_model_save_path" \
+      #  --attack_epochs "$num_epoch" --target_epochs "$num_epoch" --data_path "$data_dir" --shuffle_seed "$shuffle_seed" \
+      #  --pretrained "True"
     done
 done
