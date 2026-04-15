@@ -255,12 +255,12 @@ def get_aux_info(args, device: str, num_classes: int) -> mia_base.AuxiliaryInfo:
         if args.attack == "lira":
             return lira_mia.LiraAuxiliaryInfo(
                 {"device": device, "seed": args.seed, "save_path": args.preparation_path, "num_classes": num_classes,
-                "batch_size": args.batch_size, "lr": args.attack_lr, "num_shadow_models": 20, "epochs": args.attack_epochs, "log_path": args.result_path,
+                "batch_size": args.batch_size, "lr": args.attack_lr, "num_shadow_models": 120, "epochs": args.attack_epochs, "log_path": args.result_path,
                 "shadow_path": args.lira_shadow_path, "shadow_diff_init": True, "augmentation_query": n_augmentation, "online": True})
         else:
             return lira_mia.LiraAuxiliaryInfo(
                 {"device": device, "seed": args.seed, "save_path": args.preparation_path, "num_classes": num_classes,
-                "batch_size": args.batch_size, "lr": args.attack_lr, "num_shadow_models": 20, "epochs": args.attack_epochs, "log_path": args.result_path,
+                "batch_size": args.batch_size, "lr": args.attack_lr, "num_shadow_models": 120, "epochs": args.attack_epochs, "log_path": args.result_path,
                 "shadow_path": args.lira_shadow_path, "shadow_diff_init": True, "augmentation_query": n_augmentation, "online": False})
 
     if args.attack == "reference":
@@ -483,16 +483,17 @@ if __name__ == "__main__":
     attack = get_attack(args, aux_info, target_model_access)
     attack.prepare(aux_set)
 
-    # train the shadow models
-    if args.train_shadow_models: # we are only training the shadow models
+    if args.train_shadow_models:
         attack.train(dataset_to_attack, shadow_id=args.shadow_id)
-        exit(0)
 
-    # obtain the prediction
-    pred = attack.infer(dataset_to_attack)
-    print(pred.shape)
-    np.save(os.path.join(args.result_path, "pred_" + args.attack + ".npy"), pred)
+    elif args.infer_shadow_models:
+        attack.infer(dataset_to_attack, shadow_id=args.shadow_id)
 
-    # print the accuracy
-    print(f"Accuracy: {np.mean((pred > 0.5) == target_membership):.4f}")
+    else:
+        pred = attack.predict(dataset_to_attack)
+        print(pred.shape)
+        np.save(os.path.join(args.result_path, "pred_" + args.attack + ".npy"), pred)
+
+        # print the accuracy
+        print(f"Accuracy: {np.mean((pred > 0.5) == target_membership):.4f}")
 

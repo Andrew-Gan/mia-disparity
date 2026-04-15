@@ -27,6 +27,7 @@ mkdir -p "$preds_dir"
 arch=$2 #("densenet121" "resnet50" "vgg19") ("resnet56" "mlp_for_texas_purchase")
 dataset=$3 #datasets=("purchase100" "texas100")
 mia="lira" #("lira" "reference" "shokri" "losstraj" "calibration" "yeom" "aug")
+start_id=$4
 
 # if assign different num_epoch for different dataset
 if [[ "$dataset" == "cifar10_32" || "$dataset" == "cifar10_256" ]]; then
@@ -73,21 +74,24 @@ else
   lira_shadow_dir="$preds_dir/$dataset/$arch/lira_shadow_ckpts"
 fi
 
-python3 obtain_pred.py \
-  --dataset "$dataset" \
-  --target_model "$arch" \
-  --attack "$mia" \
-  --result_path "$result_dir" \
-  --seed "$seed" \
-  --delete-files "True" \
-  --preparation_path "$prepare_dir" \
-  --data_aug "False"  \
-  --target_model_path "$target_model_save_path" \
-  --attack_epochs "$num_epoch" \
-  --data_path "$data_dir" \
-  --device "cuda:0" \
-  --dataset_file_root="$data_dir" \
-  --lira_shadow_path "$lira_shadow_dir" \
-  --pretrained "True"
+for id in {start_id..start_id+29}; do
+  python3 obtain_pred.py \
+    --dataset "$dataset" \
+    --target_model "$arch" \
+    --attack "$mia" \
+    --result_path "$result_dir" \
+    --seed "$seed" \
+    --delete-files "True" \
+    --preparation_path "$prepare_dir" \
+    --data_aug "False"  \
+    --target_model_path "$target_model_save_path" \
+    --attack_epochs "$num_epoch" \
+    --data_path "$data_dir" \
+    --device "cuda:0" \
+    --dataset_file_root="$data_dir" \
+    --lira_shadow_path "$lira_shadow_dir" \
+    --pretrained "True" \
+    --infer_shadow_models "True" --shadow_id $id
+done
 
 rm -r "$prepare_path"
