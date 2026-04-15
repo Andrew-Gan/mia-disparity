@@ -255,12 +255,12 @@ def get_aux_info(args, device: str, num_classes: int) -> mia_base.AuxiliaryInfo:
         if args.attack == "lira":
             return lira_mia.LiraAuxiliaryInfo(
                 {"device": device, "seed": args.seed, "save_path": args.preparation_path, "num_classes": num_classes,
-                "batch_size": args.batch_size, "lr": args.attack_lr, "num_shadow_models": 120, "epochs": args.attack_epochs, "log_path": args.result_path,
+                "batch_size": args.batch_size, "lr": args.attack_lr, "num_shadow_models": args.num_shadow_models, "epochs": args.attack_epochs, "log_path": args.result_path,
                 "shadow_path": args.lira_shadow_path, "shadow_diff_init": True, "augmentation_query": n_augmentation, "online": True})
         else:
             return lira_mia.LiraAuxiliaryInfo(
                 {"device": device, "seed": args.seed, "save_path": args.preparation_path, "num_classes": num_classes,
-                "batch_size": args.batch_size, "lr": args.attack_lr, "num_shadow_models": 120, "epochs": args.attack_epochs, "log_path": args.result_path,
+                "batch_size": args.batch_size, "lr": args.attack_lr, "num_shadow_models": args.num_shadow_models, "epochs": args.attack_epochs, "log_path": args.result_path,
                 "shadow_path": args.lira_shadow_path, "shadow_diff_init": True, "augmentation_query": n_augmentation, "online": False})
 
     if args.attack == "reference":
@@ -330,7 +330,9 @@ if __name__ == "__main__":
     parser.add_argument("--save_dataset", type=bool, default=False, help="whether to save the dataset")
     parser.add_argument("--train_target_model", type=bool, default=False, help="whether to train the target model")
     parser.add_argument("--train_shadow_models", type=bool, default=False, help="whether to train the shadow models")
-    parser.add_argument("--shadow_id", type=int, default=0)
+    parser.add_argument("--infer_shadow_models", type=bool, default=False, help="whether to train the shadow models")
+    parser.add_argument("--num_shadow_models", type=int, default=20, help="number of shadow models")
+    parser.add_argument("--shadow_id", type=int, default=0, help="specific shadow model")
 
     # mandatory arguments
     parser.add_argument("--attack", type=str, default=None, help="MIA type: [losstraj, yeom, shokri ,lira, aug, calibration, top_k_shokri, reference, lira_offline]")

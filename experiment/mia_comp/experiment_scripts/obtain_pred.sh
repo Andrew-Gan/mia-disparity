@@ -88,6 +88,7 @@ python3 obtain_pred.py \
   --device "cuda:0" \
   --dataset_file_root="$data_dir" \
   --lira_shadow_path "$lira_shadow_dir" \
-  --pretrained "True"
+  --pretrained "True" \
+  --num_shadow_models 120
 
 rm -r "$prepare_path"

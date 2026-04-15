@@ -15,8 +15,6 @@ seed=$1
 #     seed=$1
 # fi
 
-echo "obtain_pred.sh seed = $seed"
-
 data_dir="${DATA_DIR}/miae_standard_exp/target"
 preds_dir="${DATA_DIR}/miae_standard_exp/preds_sd${seed}"
 target_model_path="$data_dir/target_models"
