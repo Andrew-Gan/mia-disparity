@@ -2,6 +2,7 @@
 
 seeds=(0 20 40 60 80 100)
 arch=$1
+dataset=$2
 
 # modify this to set up directory:
 DATA_DIR="${SCRATCH}/mia/data"
@@ -15,7 +16,7 @@ for sd in "${seeds[@]}"; do
     # fi
 
     # Launch the experiment and save output to log file
-    sbatch ./experiment_scripts/obtain_pred.sh $sd $arch
+    sbatch ./experiment_scripts/obtain_pred.sh $sd $arch $dataset
 done
 
 # # Wait for all background processes to complete

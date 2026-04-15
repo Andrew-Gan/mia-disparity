@@ -196,11 +196,6 @@ class LIRAUtil(MIAUtils):
 
         if not os.path.exists(info.shadow_path):
             os.makedirs(info.shadow_path)
-
-        # if the required shadow models are already trained, skip the training
-        if len(os.listdir(info.shadow_path)) >= iteration_range:
-            cls.log(info, f"shadow models are already trained, skip the training", print_flag=True)
-            return
     
         expid = shadow_id
 

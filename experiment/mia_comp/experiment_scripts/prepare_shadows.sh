@@ -1,11 +1,11 @@
 #!/bin/bash
 
-dataset="cifar10_32"
 arch=$1
+dataset=$2
 seeds=(0 20 40 60 80 100)
 
-if [ "$#" -lt 1 ]; then
-  echo "Usage: $0 arch" >&2
+if [ "$#" -lt 2 ]; then
+  echo "Usage: $0 arch dataset" >&2
   exit 1
 fi
 

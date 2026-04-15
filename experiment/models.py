@@ -6,7 +6,6 @@ import torch.nn as nn
 import torch
 import numpy as np
 import torch.nn.functional as F
-# from opacus import PrivacyEngine
 import types
 
 
@@ -48,7 +47,6 @@ def get_torchvision_model(model_name, num_classes):
         model.fc = torch.nn.Linear(model.fc.in_features, num_classes)
     elif model_name == 'alexnet' or model_name == 'vgg19':
         model.classifier[6] = torch.nn.Linear(model.classifier[6].in_features, num_classes)
-    # model = PrivacyEngine.get_compatible_module(model)
     return model
 
 

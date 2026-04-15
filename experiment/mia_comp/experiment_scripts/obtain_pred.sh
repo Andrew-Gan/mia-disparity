@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH -A zghodsi -q preemptible --mem=16G -p ai -c 14 --mem=16G --gpus-per-node=1 --time=30
+#SBATCH -A zghodsi -q normal --mem=16G -p ai -c 14 --mem=16G --gpus-per-node=1 --time=120
 
 export TORCH_HOME=${SCRATCH}/torch
 export HF_HUB_DISABLE_PROGRESS_BARS=1
@@ -24,9 +24,8 @@ prepare_path="${preds_dir}/prepare_sd${seed}"
 
 mkdir -p "$preds_dir"
 
-#datasets=("purchase100" "texas100")
-dataset="cifar10_32"
 arch=$2 #("densenet121" "resnet50" "vgg19") ("resnet56" "mlp_for_texas_purchase")
+dataset=$3 #datasets=("purchase100" "texas100")
 mia="lira" #("lira" "reference" "shokri" "losstraj" "calibration" "yeom" "aug")
 
 # if assign different num_epoch for different dataset
