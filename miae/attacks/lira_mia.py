@@ -377,7 +377,7 @@ class LIRAUtil(MIAUtils):
 
     @classmethod
     def process_shadow_model(cls, info: LiraAuxiliaryInfo, auxiliary_dataset: Dataset, shadow_model_arch, shadow_id: int) \
-            -> Tuple[torch.Tensor, torch.Tensor]:
+            -> torch.Tensor:
         """
         Load and process the shadow models to generate the scores and kept indices.
 
@@ -392,9 +392,9 @@ class LIRAUtil(MIAUtils):
 
         fullset_targets = get_xy_from_dataset(auxiliary_dataset, only_y=True)
 
-        dir_name = info.shadow_path + '/' + shadow_id
+        seed_folder = os.path.join(info.shadow_path, f'{shadow_id}')
 
-        seed_folder = os.path.join(info.shadow_path, dir_name)
+        scores = None
         if os.path.isdir(seed_folder):
             model_path = os.path.join(seed_folder, "shadow.pth")
             cls.log(info, f"load model [{shadow_id}]: {model_path}", print_flag=True)
@@ -545,21 +545,29 @@ class LiraAttack(MiAttack):
         shadow_target_concat_set = ConcatDataset([self.auxiliary_dataset, dataset])
         shadow_model = self.target_model_access.get_untrained_model()
         # given the model, calculate the score and generate the kept index data
-        self.shadow_score, self.shadow_keep = LIRAUtil.process_shadow_model(self.aux_info,
-                                                                                shadow_target_concat_set,
-                                                                                shadow_model,
-                                                                                shadow_id)
-        torch.save(self.shadow_score, self.aux_info.shadow_path + '/' + shadow_id + '/' + 'score.npy')
+        shadow_score = LIRAUtil.process_shadow_model(self.aux_info,
+                                                    shadow_target_concat_set,
+                                                    shadow_model,
+                                                    shadow_id)
+
+        score_path = os.path.join(self.aux_info.shadow_path, str(shadow_id), 'score.pt')
+        torch.save(shadow_score, score_path)
 
 
     def predict(self, dataset: torch.utils.data.Dataset) -> np.ndarray:
         shadow_target_concat_set = ConcatDataset([self.auxiliary_dataset, dataset])
-        self.shadow_score = []
+
+        self.shadow_scores = []
         self.shadow_keeps = []
+
         for shadow_id in range(self.aux_info.num_shadow_models):
-            shadow_dir = self.aux_info.shadow_path + '/' + shadow_id + '/'
-            self.shadow_score.append(torch.load(shadow_dir + 'score.npy'))
-            self.shadow_keeps.append(torch.load(shadow_dir + 'keep.npy'))
+            seed_folder = os.path.join(self.aux_info.shadow_path, str(shadow_id))
+            score_path = os.path.join(self.aux_info.shadow_path, str(shadow_id), 'score.pt')
+            keep_path = os.path.join(seed_folder, "keep.npy")
+
+            self.shadow_scores.append(torch.load(score_path))
+            keep = torch.unsqueeze(torch.from_numpy(np.load(keep_path)), 0)
+            self.shadow_keeps.append(keep)
 
         # Convert the list of tensors to a single tensor
         self.shadow_scores = torch.cat(self.shadow_scores, dim=0)

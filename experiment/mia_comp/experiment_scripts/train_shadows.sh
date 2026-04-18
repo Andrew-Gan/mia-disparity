@@ -10,5 +10,5 @@ if [ "$#" -lt 2 ]; then
 fi
 
 for seed in "${seeds[@]}"; do
-  sbatch experiment_scripts/prepare_shadows_per_node.sh $dataset $arch "lira" $seed
+  sbatch experiment_scripts/train_shadows_per_node.slurm $dataset $arch "lira" $seed
 done

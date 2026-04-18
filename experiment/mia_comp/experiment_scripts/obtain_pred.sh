@@ -10,6 +10,8 @@ DATA_DIR="${SCRATCH}/mia/data"
 
 # This script is used to obtain the predictions of the attack on the target models
 seed=$1
+arch=$2 #("densenet121" "resnet50" "vgg19") ("resnet56" "mlp_for_texas_purchase")
+dataset=$3 #datasets=("purchase100" "texas100")
 
 # if [ $# -eq 1 ]; then  # if the number of arguments is 1, the argument is the seed
 #     seed=$1
@@ -23,9 +25,6 @@ target_model_path="$data_dir/target_models"
 prepare_path="${preds_dir}/prepare_sd${seed}"
 
 mkdir -p "$preds_dir"
-
-arch=$2 #("densenet121" "resnet50" "vgg19") ("resnet56" "mlp_for_texas_purchase")
-dataset=$3 #datasets=("purchase100" "texas100")
 mia="lira" #("lira" "reference" "shokri" "losstraj" "calibration" "yeom" "aug")
 
 # if assign different num_epoch for different dataset
@@ -51,7 +50,6 @@ result_dir="$preds_dir/$dataset/$arch/${mia}"
 # if the predictions are already saved, skip
 if [ -f "$result_dir/pred_$mia.npy" ]; then
     echo "Predictions already saved for $dataset $arch $mia at $result_dir/pred_$mia.npy"
-    continue
 else
     echo "Predictions not saved for $dataset $arch $mia at $result_dir/pred_$mia.npy"
 fi
