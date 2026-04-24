@@ -178,7 +178,13 @@ class LIRAUtil(MIAUtils):
         Loads the model from the given path.
         """
         device = next(model.parameters()).device
-        model.load_state_dict(torch.load(path, map_location=device))
+        if '_module.' in list(model.state_dict().keys())[0]:
+            # modify parameter names if model arch is fixed by opacus
+            old_state_dict = torch.load(path, map_location=device)
+            new_state_dict = {}
+            for key, value in old_state_dict.items():
+                new_state_dict['_module.' + key] = value
+            model.load_state_dict(new_state_dict)
         model.eval()
         return model
 
@@ -376,8 +382,8 @@ class LIRAUtil(MIAUtils):
         return model_access.get_signal_lira(data_loader, device, augmentation=augmentation)
 
     @classmethod
-    def process_shadow_model(cls, info: LiraAuxiliaryInfo, auxiliary_dataset: Dataset, shadow_model_arch, shadow_id: int) \
-            -> torch.Tensor:
+    def process_shadow_model(cls, info: LiraAuxiliaryInfo, auxiliary_dataset: Dataset, shadow_model_arch, shadow_id) \
+            -> Tuple[List[torch.Tensor], List[torch.Tensor]]:
         """
         Load and process the shadow models to generate the scores and kept indices.
 
@@ -388,16 +394,22 @@ class LIRAUtil(MIAUtils):
 
         :return: The list of scores and the list of kept indices.
         """
-        fullsetloader = DataLoader(auxiliary_dataset, batch_size=info.query_batch_size, shuffle=False, num_workers=8, pin_memory=True)
+        fullsetloader = DataLoader(auxiliary_dataset, batch_size=info.query_batch_size, shuffle=False, num_workers=2)
 
-        fullset_targets = get_xy_from_dataset(auxiliary_dataset, only_y=True)
+        _, fullset_targets = get_xy_from_dataset(auxiliary_dataset)
 
-        seed_folder = os.path.join(info.shadow_path, f'{shadow_id}')
+        # score_list = []
+        # keep_list = []
+        # model_locations = sorted(os.listdir(info.shadow_path),
+        #                          key=lambda x: int(re.search(r'\d+', x).group()))  # os.listdir(info.shadow_path)
 
-        scores = None
+        # for index, dir_name in enumerate(model_locations, start=1):
+        index = shadow_id
+        seed_folder = os.path.join(info.shadow_path, str(shadow_id))
         if os.path.isdir(seed_folder):
             model_path = os.path.join(seed_folder, "shadow.pth")
-            cls.log(info, f"load model [{shadow_id}]: {model_path}", print_flag=True)
+            cls.log(info, f"load model [{index}/{info.num_shadow_models}]: {model_path}", print_flag=True)
+
             model = cls.load_model(shadow_model_arch, path=model_path).to(info.device)
             # print(shadow_model_arch, model_path)
             scores, mean_acc = cls._calculate_score(cls._generate_logits(model,
@@ -405,11 +417,20 @@ class LIRAUtil(MIAUtils):
                                                                             info.augmentation_query,
                                                                             info.device).cpu().numpy(),
                                                     fullset_targets)
-            cls.log(info, f"Model {shadow_id} mean acc: {mean_acc}", print_flag=True)
+            cls.log(info, f"Model {index} mean acc: {mean_acc}", print_flag=True)
             # Convert the numpy array to a PyTorch tensor and add a new dimension
             scores = torch.unsqueeze(torch.from_numpy(scores), 0)
+            # score_list.append(scores)
+            return scores
 
-        return scores
+            # keep_path = os.path.join(seed_folder, "keep.npy")
+            # if os.path.isfile(keep_path):
+            #     keep = torch.unsqueeze(torch.from_numpy(np.load(keep_path)), 0)
+                # keep_list.append(keep)
+        else:
+            cls.log(info, f"model {index} at {model_path} does not exist, skip this record", print_flag=True)
+
+        # return score_list, keep_list
 
 
     @classmethod
@@ -541,38 +562,49 @@ class LiraAttack(MiAttack):
         LIRAUtil.train_shadow_model(shadow_model, shadow_target_concat_set, info=self.aux_info, shadow_id=shadow_id)
 
 
-    def infer(self, dataset: torch.utils.data.Dataset, shadow_id: int) -> None:
+    def infer(self, target_name, dataset: torch.utils.data.Dataset, shadow_id: int, result_path: str) -> np.ndarray:
+        """
+        Infers whether a data point is in the training set by using the LIRA membership inference attack.
+
+        :param dataset: The target data points to be inferred.
+        :return: The inferred membership status of the data point.
+        """
+        LIRAUtil.log(self.aux_info, "Start membership inference...", print_flag=True)
+
+        set_seed(self.aux_info.seed)
+
+        # shadow_model = self.target_model_access.get_untrained_model()
+        arch = target_name.split('.')[0] if '_' not in target_name else target_name.split('_')[0]
+        non_dp_model_path = os.getenv('SCRATCH') + f'/blazedp/{arch}.pth'
+        shadow_model = torch.load(non_dp_model_path, map_location='cuda', weights_only=False)
+
+        # concatenate the target dataset and the auxiliary dataset
         shadow_target_concat_set = ConcatDataset([self.auxiliary_dataset, dataset])
-        shadow_model = self.target_model_access.get_untrained_model()
+
         # given the model, calculate the score and generate the kept index data
-        shadow_score = LIRAUtil.process_shadow_model(self.aux_info,
-                                                    shadow_target_concat_set,
-                                                    shadow_model,
-                                                    shadow_id)
-
-        score_path = os.path.join(self.aux_info.shadow_path, str(shadow_id), 'score.pt')
-        torch.save(shadow_score, score_path)
+        scores = LIRAUtil.process_shadow_model(self.aux_info, shadow_target_concat_set, shadow_model, shadow_id)
+        os.makedirs(os.path.join(result_path, str(shadow_id)), exist_ok=True)
+        torch.save(scores, os.path.join(result_path, str(shadow_id), "scores.pt"))
 
 
-    def predict(self, dataset: torch.utils.data.Dataset) -> np.ndarray:
-        shadow_target_concat_set = ConcatDataset([self.auxiliary_dataset, dataset])
-
-        self.shadow_scores = []
-        self.shadow_keeps = []
-
-        for shadow_id in range(self.aux_info.num_shadow_models):
-            seed_folder = os.path.join(self.aux_info.shadow_path, str(shadow_id))
-            score_path = os.path.join(self.aux_info.shadow_path, str(shadow_id), 'score.pt')
+    def predict(self, dataset: torch.utils.data.Dataset, result_path : str):
+        info = self.aux_info
+        score_list = []
+        keep_list = []
+        for shadow_id in range(info.num_shadow_models):
+            seed_folder = os.path.join(info.shadow_path, str(shadow_id))
+            scores = torch.load(os.path.join(result_path, str(shadow_id), "scores.pt"))
+            score_list.append(scores)
             keep_path = os.path.join(seed_folder, "keep.npy")
-
-            self.shadow_scores.append(torch.load(score_path))
-            keep = torch.unsqueeze(torch.from_numpy(np.load(keep_path)), 0)
-            self.shadow_keeps.append(keep)
+            if os.path.isfile(keep_path):
+                keep = torch.unsqueeze(torch.from_numpy(np.load(keep_path)), 0)
+                keep_list.append(keep)
 
         # Convert the list of tensors to a single tensor
         self.shadow_scores = torch.cat(self.shadow_scores, dim=0)
         self.shadow_keeps = torch.cat(self.shadow_keeps, dim=0)
 
+        shadow_target_concat_set = ConcatDataset([self.auxiliary_dataset, dataset])
 
         # obtaining target_score, which is the score of target datapoints on the target model
         target_scores = LIRAUtil.process_target_model(self.target_model_access, self.aux_info,

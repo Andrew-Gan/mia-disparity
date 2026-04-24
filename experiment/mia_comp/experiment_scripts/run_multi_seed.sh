@@ -1,23 +1,39 @@
 #!/bin/bash
 
-seeds=(0 20 40 60 80 100)
 arch=$1
 dataset=$2
+seeds=(0 20 40 60 80 100)
 
-# modify this to set up directory:
-DATA_DIR="${SCRATCH}/mia/data"
+# if [ "$#" -lt 2 ]; then
+#   echo "Usage: $0 arch dataset" >&2
+#   exit 1
+# fi
 
-# for each seed
+# prepare dataset
+# sbatch experiment_scripts/prepare_target.slurm
+
+# NOTE: train target models with BlazeDP before next steps!
+
+# train shadow models
+# for seed in "${seeds[@]}"; do
+#     sbatch -W ./experiment_scripts/train_shadows.slurm $seed $arch $dataset &
+# done
+
+# wait
+
+# inference shadow models
 for sd in "${seeds[@]}"; do
-    # Remove the log file if it exists
-    # if [ -f "$log_file" ]; then
-    #     rm "$log_file"
-    #     echo "Removed existing log file: $log_file"
-    # fi
-
-    # Launch the experiment and save output to log file
-    sbatch ./experiment_scripts/obtain_pred.sh $sd $arch $dataset
+    sbatch -W ./experiment_scripts/infer_shadow.slurm $sd $arch $dataset &
 done
 
-# # Wait for all background processes to complete
-# wait
+wait
+
+# obtain predictions
+for sd in "${seeds[@]}"; do
+    sbatch -W ./experiment_scripts/obtain_pred.slurm $sd $arch $dataset &
+done
+
+wait
+
+# plot multi instance graph
+sbatch ./experiment_scripts/obtain_multi_seed_conv.slurm $arch $dataset

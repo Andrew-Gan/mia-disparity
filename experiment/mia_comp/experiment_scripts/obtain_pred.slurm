@@ -28,7 +28,7 @@ mkdir -p "$preds_dir"
 mia="lira" #("lira" "reference" "shokri" "losstraj" "calibration" "yeom" "aug")
 
 # if assign different num_epoch for different dataset
-if [[ "$dataset" == "cifar10_32" || "$dataset" == "cifar10_256" ]]; then
+if [[ "$dataset" == "cifar10_32" || "$dataset" == "cifar10_224" ]]; then
   num_epoch=60
 elif [ "$dataset" == "cifar100" ]; then
   num_epoch=100
@@ -63,13 +63,15 @@ mkdir -p "$result_dir"
 prepare_dir="$prepare_path"
 
 echo "Running $dataset $arch $mia"
-target_model_save_path="$target_model_path/$dataset/$arch"
 
-if [[ "$arch" == *"_"* ]]; then
-  lira_shadow_dir="$preds_dir/$dataset/${arch%%_*}_dp/lira_shadow_ckpts"
+# if target model is dp, get shadow model as non-dp
+if [[ "$arch" == *"_"*  ]]; then
+  lira_shadow_dir="$preds_dir/$dataset/${arch%%_*}/lira_shadow_ckpts"
 else
   lira_shadow_dir="$preds_dir/$dataset/$arch/lira_shadow_ckpts"
 fi
+
+target_model_save_path="$target_model_path/$dataset/$arch"
 
 python3 obtain_pred.py \
   --dataset "$dataset" \
@@ -86,7 +88,6 @@ python3 obtain_pred.py \
   --device "cuda:0" \
   --dataset_file_root="$data_dir" \
   --lira_shadow_path "$lira_shadow_dir" \
-  --pretrained "True" \
-  --num_shadow_models 120
+  --pretrained "True"
 
 rm -r "$prepare_path"

@@ -63,7 +63,7 @@ def get_cifar10_32(aug: bool = True) -> ConcatDataset:
     return ConcatDataset([trainset, testset])
 
 
-def get_cifar10_256(aug: bool = True) -> ConcatDataset:
+def get_cifar10_224(aug: bool = True) -> ConcatDataset:
     mean = [0.485, 0.456, 0.406]
     std = [0.229, 0.224, 0.225]
     regular_transform = T.Compose([T.ToTensor(),

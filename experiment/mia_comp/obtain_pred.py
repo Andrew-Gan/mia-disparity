@@ -48,8 +48,8 @@ def get_dataset(dataset_name, aug, targetset_ratio, train_test_ratio, data_dir, 
         dataset = datasets.get_cifar10_32(aug)
         num_classes = 10
         input_size = 32
-    elif dataset_name == "cifar10_256":
-        dataset = datasets.get_cifar10_256(aug)
+    elif dataset_name == "cifar10_224":
+        dataset = datasets.get_cifar10_224(aug)
         num_classes = 10
         input_size = 224
     elif dataset_name == "cifar100":
@@ -92,7 +92,7 @@ def load_dataset_info(datset_name):
     if datset_name == "cifar10_32":
         num_classes = 10
         input_size = 32
-    elif datset_name == "cifar10_256":
+    elif datset_name == "cifar10_224":
         num_classes = 10
         input_size = 224
     elif datset_name == "cifar100":
@@ -329,8 +329,8 @@ if __name__ == "__main__":
     index - data mapping is consistent across different runs. This is useful when we want to compare the performance."""
     parser.add_argument("--save_dataset", type=bool, default=False, help="whether to save the dataset")
     parser.add_argument("--train_target_model", type=bool, default=False, help="whether to train the target model")
-    parser.add_argument("--train_shadow_models", type=bool, default=False, help="whether to train the shadow models")
-    parser.add_argument("--infer_shadow_models", type=bool, default=False, help="whether to train the shadow models")
+    parser.add_argument("--train_shadow_model", type=bool, default=False, help="whether to train the shadow models")
+    parser.add_argument("--infer_shadow_model", type=bool, default=False, help="whether to train the shadow models")
     parser.add_argument("--num_shadow_models", type=int, default=20, help="number of shadow models")
     parser.add_argument("--shadow_id", type=int, default=0, help="specific shadow model")
 
@@ -485,17 +485,18 @@ if __name__ == "__main__":
     attack = get_attack(args, aux_info, target_model_access)
     attack.prepare(aux_set)
 
-    if args.train_shadow_models:
+    if args.train_shadow_model:
         attack.train(dataset_to_attack, shadow_id=args.shadow_id)
+        exit(0)
 
-    elif args.infer_shadow_models:
-        attack.infer(dataset_to_attack, shadow_id=args.shadow_id)
+    if args.infer_shadow_model:
+        attack.infer(args.target_model, dataset_to_attack, args.shadow_id, args.result_path)
+        exit(0)
+    
+    pred = attack.predict(dataset_to_attack)
+    print(pred.shape)
+    np.save(os.path.join(args.result_path, "pred_" + args.attack + ".npy"), pred)
 
-    else:
-        pred = attack.predict(dataset_to_attack)
-        print(pred.shape)
-        np.save(os.path.join(args.result_path, "pred_" + args.attack + ".npy"), pred)
-
-        # print the accuracy
-        print(f"Accuracy: {np.mean((pred > 0.5) == target_membership):.4f}")
+    # print the accuracy
+    print(f"Accuracy: {np.mean((pred > 0.5) == target_membership):.4f}")
 
