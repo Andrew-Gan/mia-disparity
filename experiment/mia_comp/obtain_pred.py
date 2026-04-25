@@ -330,7 +330,6 @@ if __name__ == "__main__":
     parser.add_argument("--save_dataset", type=bool, default=False, help="whether to save the dataset")
     parser.add_argument("--train_target_model", type=bool, default=False, help="whether to train the target model")
     parser.add_argument("--train_shadow_model", type=bool, default=False, help="whether to train the shadow models")
-    parser.add_argument("--infer_shadow_model", type=bool, default=False, help="whether to train the shadow models")
     parser.add_argument("--num_shadow_models", type=int, default=20, help="number of shadow models")
     parser.add_argument("--shadow_id", type=int, default=0, help="specific shadow model")
 
@@ -488,12 +487,8 @@ if __name__ == "__main__":
     if args.train_shadow_model:
         attack.train(dataset_to_attack, shadow_id=args.shadow_id)
         exit(0)
-
-    if args.infer_shadow_model:
-        attack.infer(args.target_model, dataset_to_attack, args.shadow_id, args.result_path)
-        exit(0)
     
-    pred = attack.predict(dataset_to_attack)
+    pred = attack.infer(args.target_model, dataset_to_attack)
     print(pred.shape)
     np.save(os.path.join(args.result_path, "pred_" + args.attack + ".npy"), pred)
 

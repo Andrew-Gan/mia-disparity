@@ -21,13 +21,6 @@ seeds=(0 20 40 60 80 100)
 
 # wait
 
-# inference shadow models
-for sd in "${seeds[@]}"; do
-    sbatch -W ./experiment_scripts/infer_shadow.slurm $sd $arch $dataset &
-done
-
-wait
-
 # obtain predictions
 for sd in "${seeds[@]}"; do
     sbatch -W ./experiment_scripts/obtain_pred.slurm $sd $arch $dataset &

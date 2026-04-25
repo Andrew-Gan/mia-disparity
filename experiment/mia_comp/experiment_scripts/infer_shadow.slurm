@@ -73,7 +73,7 @@ fi
 
 target_model_save_path="$target_model_path/$dataset/$arch"
 
-for id in {0..19}; do
+for id in 13 14; do
   python3 obtain_pred.py \
     --dataset "$dataset" \
     --target_model "$arch" \
