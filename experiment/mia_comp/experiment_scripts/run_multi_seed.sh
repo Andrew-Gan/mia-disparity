@@ -22,11 +22,11 @@ seeds=(0 20 40 60 80 100)
 # wait
 
 # obtain predictions
-for sd in "${seeds[@]}"; do
-    sbatch -W ./experiment_scripts/obtain_pred.slurm $sd $arch $dataset &
-done
+# for sd in "${seeds[@]}"; do
+#     sbatch -W ./experiment_scripts/obtain_pred.slurm $sd $arch $dataset &
+# done
 
-wait
+# wait
 
 # plot multi instance graph
 sbatch ./experiment_scripts/obtain_multi_seed_conv.slurm $arch $dataset
