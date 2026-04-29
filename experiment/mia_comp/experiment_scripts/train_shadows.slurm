@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH -A zghodsi -q normal -p ai -c 14 --gpus-per-node=1 --time=600
+#SBATCH -A zghodsi -q normal -p ai -c 14 --gpus-per-node=1 --time=180
 
 export TORCH_HOME=${SCRATCH}/torch
 export HF_HUB_DISABLE_PROGRESS_BARS=1
@@ -49,7 +49,7 @@ fi
 
 lira_shadow_dir="$preds_dir/$dataset/$arch/lira_shadow_ckpts"
 
-for id in {0..20}; do
+for id in {0..19}; do
   mkdir -p "$lira_shadow_dir/$id"
   if [ ! -f "$lira_shadow_dir/$id/shadow.pth" ]; then
     python obtain_pred.py --dataset "$dataset" --target_model "$arch" \

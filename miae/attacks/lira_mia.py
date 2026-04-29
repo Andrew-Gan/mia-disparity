@@ -401,19 +401,24 @@ class LIRAUtil(MIAUtils):
             seed_folder = os.path.join(info.shadow_path, dir_name)
             if os.path.isdir(seed_folder):
                 model_path = os.path.join(seed_folder, "shadow.pth")
-                cls.log(info, f"load model [{index}/{len(model_locations)}]: {model_path}", print_flag=True)
-                model = cls.load_model(shadow_model_arch, path=model_path).to(info.device)
-                # print(shadow_model_arch, model_path)
-                scores, mean_acc = cls._calculate_score(cls._generate_logits(model,
-                                                                             fullsetloader,
-                                                                             info.augmentation_query,
-                                                                             info.device).cpu().numpy(),
-                                                        fullset_targets)
-                cls.log(info, f"Model {index} mean acc: {mean_acc}", print_flag=True)
-                # Convert the numpy array to a PyTorch tensor and add a new dimension
+                score_path = os.path.join(seed_folder, 'score.npy')
+                if not os.path.isfile(score_path):
+                    cls.log(info, f"load model [{index}/{len(model_locations)}]: {model_path}", print_flag=True)
+                    model = cls.load_model(shadow_model_arch, path=model_path).to(info.device)
+                    # print(shadow_model_arch, model_path)
+                    scores, mean_acc = cls._calculate_score(cls._generate_logits(model,
+                                                                                fullsetloader,
+                                                                                info.augmentation_query,
+                                                                                info.device).cpu().numpy(),
+                                                            fullset_targets)
+                    cls.log(info, f"Model {index} mean acc: {mean_acc}", print_flag=True)
+                    # Convert the numpy array to a PyTorch tensor and add a new dimension
+                    np.save(score_path, scores)
+                else:
+                    scores = torch.load(score_path)
+
                 scores = torch.unsqueeze(torch.from_numpy(scores), 0)
                 score_list.append(scores)
-
                 keep_path = os.path.join(seed_folder, "keep.npy")
                 if os.path.isfile(keep_path):
                     keep = torch.unsqueeze(torch.from_numpy(np.load(keep_path)), 0)
@@ -557,10 +562,7 @@ class LiraAttack(MiAttack):
         # shadow_model = self.target_model_access.get_untrained_model()
         arch = target_name.split('.')[0] if '_' not in target_name else target_name.split('_')[0]
         non_dp_model_path = os.getenv('SCRATCH') + f'/blazedp/{arch}.pth'
-        if arch == 'resnet56': # temporary, remove later
-            shadow_model = torch.load(os.getenv('SCRATCH') + f'/blazedp/{target_name}.pth', map_location='cuda', weights_only=False)
-        else:
-            shadow_model = torch.load(non_dp_model_path, map_location='cuda', weights_only=False)
+        shadow_model = torch.load(non_dp_model_path, map_location='cuda', weights_only=False)
         # given the model, calculate the score and generate the kept index data
         self.shadow_scores, self.shadow_keeps = LIRAUtil.process_shadow_models(self.aux_info,
                                                                                 shadow_target_concat_set,

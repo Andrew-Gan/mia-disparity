@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH -A zghodsi -p smallgpu -c 64 -q normal --gpus-per-node=1 --time=20
+#SBATCH -A zghodsi -p smallgpu -c 14 -q normal --gpus-per-node=1 --time=180
 
 export TORCH_HOME=${SCRATCH}/torch
 export HF_HUB_DISABLE_PROGRESS_BARS=1
