@@ -255,12 +255,12 @@ def get_aux_info(args, device: str, num_classes: int) -> mia_base.AuxiliaryInfo:
         if args.attack == "lira":
             return lira_mia.LiraAuxiliaryInfo(
                 {"device": device, "seed": args.seed, "save_path": args.preparation_path, "num_classes": num_classes,
-                "batch_size": args.batch_size, "lr": args.attack_lr, "num_shadow_models": args.num_shadow_models, "epochs": args.attack_epochs, "log_path": args.result_path,
+                "batch_size": args.batch_size, "lr": args.attack_lr, "num_shadow_models": 120, "epochs": args.attack_epochs, "log_path": args.result_path,
                 "shadow_path": args.lira_shadow_path, "shadow_diff_init": True, "augmentation_query": n_augmentation, "online": True})
         else:
             return lira_mia.LiraAuxiliaryInfo(
                 {"device": device, "seed": args.seed, "save_path": args.preparation_path, "num_classes": num_classes,
-                "batch_size": args.batch_size, "lr": args.attack_lr, "num_shadow_models": args.num_shadow_models, "epochs": args.attack_epochs, "log_path": args.result_path,
+                "batch_size": args.batch_size, "lr": args.attack_lr, "num_shadow_models": 120, "epochs": args.attack_epochs, "log_path": args.result_path,
                 "shadow_path": args.lira_shadow_path, "shadow_diff_init": True, "augmentation_query": n_augmentation, "online": False})
 
     if args.attack == "reference":

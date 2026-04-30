@@ -1,6 +1,6 @@
 #!/bin/sh
 
-#SBATCH -A zghodsi -q preemptible -p ai -c 14 --gpus-per-node=1 --time=5
+#SBATCH -A zghodsi -q normal -p smallgpu -c 64 --gpus-per-node=1 --time=5
 
 # modify this to set up directory:
 DATA_DIR="${SCRATCH}/mia/data"

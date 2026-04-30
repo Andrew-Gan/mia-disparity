@@ -415,7 +415,7 @@ class LIRAUtil(MIAUtils):
                     # Convert the numpy array to a PyTorch tensor and add a new dimension
                     np.save(score_path, scores)
                 else:
-                    scores = torch.load(score_path)
+                    scores = np.load(score_path)
 
                 scores = torch.unsqueeze(torch.from_numpy(scores), 0)
                 score_list.append(scores)
